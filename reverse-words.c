@@ -41,14 +41,14 @@ void reverse_words(char *str)
 	return;
 }
 
+/* Test reverse words function */
 int main()
 {
-	char input_string[8] = { 0 };
+	char input_string[128];
+
 	printf("Enter a string: ");
 	fgets(input_string, sizeof(input_string), stdin);
-
 	reverse_words(input_string);
-
 	printf("Reversed words: %s\n", input_string);
 	return 0;
 }
