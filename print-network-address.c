@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <errno.h>
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 /* IPv4 CIDR to subnet address */
 int ipstr2ipaddr(const char *str, uint32_t *ipaddr)
@@ -58,9 +59,9 @@ int main()
 	const char *ipstrs[] = { "10.1.2.3/22",      "192.168.32.2/29",
 				 "172.16.129.34/21", "192.1.164.58/26",
 				 "0.0.0.0/0",	"11.12.13.14/4",
-				 "14.6.8.1/32" };
+				 "14.6.8.1/32",      "10.2.3.29" };
 
-	for (int i = 0; i < sizeof(ipstrs) / sizeof(ipstrs[0]); i++) {
+	for (int i = 0; i < ARRAY_SIZE(ipstrs); i++) {
 		if (ipstr2ipaddr(ipstrs[i], NULL) != 0)
 			printf("%s is an invalid address\n", ipstrs[i]);
 	}
