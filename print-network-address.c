@@ -6,7 +6,7 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-static int convert_from_hex_to_dec(int val)
+static int convert_base_from_hex_to_decimal(int val)
 {
 	int ret = 0;
 	int tmp;
@@ -19,11 +19,16 @@ static int convert_from_hex_to_dec(int val)
 	return ret;
 }
 
+/*TODO:
+ * ::192.168.43.248/34  Should it be considered invalid?
+ * Currently prefix 34 (> 32) and anything <= 128 is taken
+ * as valid prefix even though IPv4 dotted quad is in inside IPv6.
+ */
 int str2ipv6(const char *str, char *buf, int size)
 {
 	const char *s = str;
 	int prefix = -1;
-	int dbl_colon_start = 0;
+	int dcs_index = -1; /* double colon start index */
 	int val = 0;
 	int qi = 0;
 	int extra = 0;
@@ -50,18 +55,18 @@ int str2ipv6(const char *str, char *buf, int size)
 			qi++;
 			val = 0;
 			if (*s == ':') {
-				if (qi == 7 || dbl_colon_start != 0)
+				if (qi == 7 || dcs_index > -1)
 					goto err;
-				dbl_colon_start = qi;
+				dcs_index = qi;
 				*b++ = 0;
 				*b++ = 0;
 				qi++, s++;
 			}
-			if(*s == '.') {
+			if(*s == '.' || *s == ':') {
 				goto err;
 			}
 		} else if (c == '.' && qi < 7) {
-			val = convert_from_hex_to_dec(val);
+			val = convert_base_from_hex_to_decimal(val);
 			if (val < 0)
 				goto err;
 			v4qi = 0;
@@ -77,12 +82,16 @@ int str2ipv6(const char *str, char *buf, int size)
 		}
 	}
 
-	if (prefix >= 0) {
-		val = convert_from_hex_to_dec(val);
-	}
+	if (dcs_index < 0 && qi < 7)
+		goto err;
 
 	qi *= 2;
-	dbl_colon_start *= 2;
+	dcs_index *= 2;
+
+	if (prefix >= 0) {
+		val = convert_base_from_hex_to_decimal(val);
+	}
+
 
 	s--;
 	while ((c = *s++) != '\0') {
@@ -108,23 +117,31 @@ int str2ipv6(const char *str, char *buf, int size)
 	} else if (v4qi == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
 		prefix = val;
-	} else if (v4qi == -1 && qi <= 16 && val <= 128) {
-		prefix = val;
+	} else if (v4qi == -1 && qi <= 16) {
+		if (prefix >= 0 && val <= 128) {
+			prefix = val;
+		} else if (prefix < 0 && qi <= 14) {
+			buf[qi++] = val >> 8;
+			buf[qi++] = val & 0xff;
+		} else {
+			goto err;
+		}
 	} else {
 		goto err;
 	}
 
 	extra = 16 - qi;
-	memmove(buf+dbl_colon_start+extra, buf+dbl_colon_start, qi - dbl_colon_start);
-	memset(buf+dbl_colon_start, 0, extra);
+	memmove(buf+dcs_index+extra, buf+dcs_index, qi - dcs_index);
+	memset(buf+dcs_index, 0, extra);
 	if (prefix >= 0)
 		buf[16] = prefix;
 	return 0;
 err:
 	return EINVAL;
 }
+
 /* IPv4 CIDR to subnet address */
-int ipstr2ipaddr(const char *str, uint32_t *ipaddr)
+int str2ipv4(const char *str, uint32_t *ipaddr)
 {
 	const char *s = str;
 	uint32_t mask = -1;
@@ -193,17 +210,32 @@ int main()
 				 "...",
 				 "83.213.79/65" };
 
-	const char *ip6strs[] = { "ffff:0102::24/48",
-				  "::0a0b:28/68",
-				  "abcd:dcba:eeff:ffee:dead:beef:8496:1024",
-				  "9232:0:48::23/122",
-				  "::",
-				  "::192.168.43.28/24",
-				};
+	const char *ip6strs[] = {
+		"ffff:0102::24/48",
+		"::0a0b:28/68",
+		":0a0b::28/68",
+		":0a0b:28/68",
+		":0a0b:28:/68",
+		"abcd:dcba:eeff:ffee:dead:beef:8496:1024",
+		"abcd:dcba:eeff:ffee:dead:beef:8496:1024/98",
+		"9232:0:48::23/122",
+		"::",
+		"::192.168.43.28/24",
+		"::192.168.43.248",
+		"::192.168.43.248/34",
+		"::257.168.43.248/34",
+		"::/132",
+		"::/128",
+		":::/128",
+		"2004:::/128",
+		"10df::45::98/12",
+		"fffff:12:0/120",
+	};
+
 	unsigned char buf[18];
 
 	for (int i = 0; i < ARRAY_SIZE(ipstrs); i++) {
-		if (ipstr2ipaddr(ipstrs[i], NULL) != 0)
+		if (str2ipv4(ipstrs[i], NULL) != 0)
 			printf("%s is an invalid address\n", ipstrs[i]);
 	}
 
@@ -214,8 +246,8 @@ int main()
 			printf("is an invalid address\n");
 		else {
 			printf("%02x%02x", buf[0], buf[1]);
-			for(int j = 1; j<8; j++) {
-				printf(":%02x%02x", buf[2*j], buf[2*j+1]);
+			for (int j = 1; j < 8; j++) {
+				printf(":%02x%02x", buf[2 * j], buf[2 * j + 1]);
 			}
 			printf("/%d\n", buf[16]);
 		}
