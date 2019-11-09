@@ -107,6 +107,8 @@ int str2ipv6(const char *str, char *buf, int size)
 				buf[i6++] = val & 0xff;
 				val = 0;
 				prefix = 128;
+			} else {
+				goto err;
 			}
 		} else {
 			goto err;
@@ -257,6 +259,7 @@ int main()
 		"abcd:dcba:eeff:ffee:dead:beef:8496:1024",
 		"abcd:dcba:eeff:ffee:dead:beef:8496::",
 		"abcd:dcba:eeff:ffee:dead:beef:8496:1024/98",
+		"9232:0:48g::23/122",
 		"9232:0:48::23/122",
 		"::",
 		"::192.168.43.28/24",
