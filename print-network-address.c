@@ -229,32 +229,58 @@ err:
 	return EINVAL;
 }
 
+void print_ipv4(uint32_t ip, int prefix)
+{
+	printf("%d.%d.%d.%d", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff,
+	       ip & 0xff);
+	if (prefix < 0)
+		putchar('\n');
+	else
+		printf("/%d\n", prefix);
+	return;
+}
+
+void print_ipv6(unsigned char buf[16], int prefix)
+{
+	char b[44];
+	snprintf(
+		b, sizeof(b),
+		"%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x/%-3d",
+		buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
+		buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14],
+		buf[15], prefix);
+	if (prefix < 0)
+		b[39] = '\0';
+	printf("%s\n", b);
+	return;
+}
+
 int main()
 {
-	const char *ipstrs[] = { "10.1.2.3/22",
-				 "192.168.32.2/29",
-				 "172.16.129.34/21",
-				 "192.1.164.58/26",
-				 "0.0.0.0/0",
-				 "11.12.13.14/4",
-				 "255.255.255.255/32",
-				 "255.255.255.255/31",
-				 "254.254.255.255/30",
-				 "14.6.8.1/32",
-				 "14.6.8./32",
-				 "10.2.3.29",
-				 "10.2.2.2.32",
-				 "49.58.64.256",
-				 "59.32.4",
-				 "59.32..4",
-				 "....",
-				 "...",
-				 ".../30",
-				 "..",
-				 "../20.",
-				 "83.213.79/65" };
+	const char *ipv4_str[] = { "10.1.2.3/22",
+				   "192.168.32.2/29",
+				   "172.16.129.34/21",
+				   "192.1.164.58/26",
+				   "0.0.0.0/0",
+				   "11.12.13.14/4",
+				   "255.255.255.255/32",
+				   "255.255.255.255/31",
+				   "254.254.255.255/30",
+				   "14.6.8.1/32",
+				   "14.6.8./32",
+				   "10.2.3.29",
+				   "10.2.2.2.32",
+				   "49.58.64.256",
+				   "59.32.4",
+				   "59.32..4",
+				   "....",
+				   "...",
+				   ".../30",
+				   "..",
+				   "../20.",
+				   "83.213.79/65" };
 
-	const char *ip6strs[] = {
+	const char *ipv6_str[] = {
 		"ffff:0102::24/48",
 		"::0a0b:28/68",
 		":0a0b::28/68",
@@ -290,25 +316,23 @@ int main()
 
 	uint32_t ipaddr;
 	int prefix;
-	for (int i = 0; i < ARRAY_SIZE(ipstrs); i++) {
-		printf("%s -> ", ipstrs[i]);
-		if (str2ipv4(ipstrs[i], &ipaddr, &prefix) != 0)
+	for (int i = 0; i < ARRAY_SIZE(ipv4_str); i++) {
+		ipaddr = prefix = -1;
+		printf("%s -> ", ipv4_str[i]);
+		if (str2ipv4(ipv4_str[i], &ipaddr, &prefix) != 0)
 			printf("Invalid IPv4 address\n");
 		else
-			printf("%x/%d\n",ipaddr, prefix);
+			print_ipv4(ipaddr, prefix);
 	}
 
-	for (int i = 0; i < ARRAY_SIZE(ip6strs); i++) {
-		printf("%s -> ", ip6strs[i]);
+	for (int i = 0; i < ARRAY_SIZE(ipv6_str); i++) {
+		prefix = -1;
+		printf("%s -> ", ipv6_str[i]);
 		memset(buf, 0, sizeof(buf));
-		if (str2ipv6(ip6strs[i], buf, &prefix) != 0)
+		if (str2ipv6(ipv6_str[i], buf, &prefix) != 0)
 			printf("Invalid IPv6 address\n");
 		else {
-			printf("%02x%02x", buf[0], buf[1]);
-			for (int j = 1; j < 8; j++) {
-				printf(":%02x%02x", buf[2 * j], buf[2 * j + 1]);
-			}
-			printf("/%d\n", prefix);
+			print_ipv6(buf, prefix);
 		}
 	}
 
