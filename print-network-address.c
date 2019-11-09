@@ -32,9 +32,9 @@ int str2ipv6(const char *str, char *buf, int size)
 	int prefix = -1;
 	int dcs_index = 0; /* double colon start index */
 	int val = 0;
-	int qi = 0;
+	int i6 = 0;
 	int extra = 0;
-	int v4qi = -1;
+	int i4 = -1;
 	char *b = buf;
 	char c;
 
@@ -51,32 +51,32 @@ int str2ipv6(const char *str, char *buf, int size)
 		} else if ('A' <= c && c <= 'F') {
 			val *= 16;
 			val += c - 'A' + 10;
-		} else if (c == ':' && qi < 7) {
+		} else if (c == ':' && i6 < 7) {
 			*b++ = val >> 8;
 			*b++ = val & 0xff;
-			qi++;
+			i6++;
 			val = 0;
 			if (*s == ':') {
-				if (qi == 7 || dcs_index != 0)
+				if (i6 == 7 || dcs_index != 0)
 					goto err;
-				dcs_index = qi;
+				dcs_index = i6;
 				*b++ = 0;
 				*b++ = 0;
-				qi++, s++;
+				i6++, s++;
 			}
 			if (*s == '.' || *s == ':') {
 				goto err;
 			}
-		} else if (c == '.' && qi < 7) {
+		} else if (c == '.' && i6 < 7) {
 			val = convert_base_from_hex_to_decimal(val);
 			if (val < 0)
 				goto err;
-			v4qi = 0;
+			i4 = 0;
 			break;
-		} else if (c == '/' && qi <= 7) {
+		} else if (c == '/' && i6 <= 7) {
 			*b++ = val >> 8;
 			*b++ = val & 0xff;
-			qi++;
+			i6++;
 			val = 0;
 			prefix = 128;
 		} else {
@@ -84,10 +84,10 @@ int str2ipv6(const char *str, char *buf, int size)
 		}
 	}
 
-	if (!dcs_index && qi < 7)
+	if (!dcs_index && i6 < 7)
 		goto err;
 
-	qi *= 2;
+	i6 *= 2;
 	dcs_index *= 2;
 
 	if (prefix >= 0) {
@@ -102,28 +102,28 @@ int str2ipv6(const char *str, char *buf, int size)
 		if ('0' <= c && c <= '9') {
 			val *= 10;
 			val += c - '0';
-		} else if ((c == '.' && v4qi < 3) || (c == '/' && v4qi == 3)) {
+		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
 			*b++ = val;
-			qi++;
-			v4qi++;
+			i6++;
+			i4++;
 			val = 0;
 		} else {
 			goto err;
 		}
 	}
 
-	if (v4qi == 3 && val <= 255) {
+	if (i4 == 3 && val <= 255) {
 		*b++ = val;
-		qi++;
-	} else if (v4qi == 4 && val <= 128) {
+		i6++;
+	} else if (i4 == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
 		prefix = val;
-	} else if (v4qi == -1 && qi <= 16) {
+	} else if (i4 == -1 && i6 <= 16) {
 		if (prefix >= 0 && val <= 128) {
 			prefix = val;
-		} else if (prefix < 0 && qi <= 14) {
-			buf[qi++] = val >> 8;
-			buf[qi++] = val & 0xff;
+		} else if (prefix < 0 && i6 <= 14) {
+			buf[i6++] = val >> 8;
+			buf[i6++] = val & 0xff;
 		} else {
 			goto err;
 		}
@@ -131,8 +131,8 @@ int str2ipv6(const char *str, char *buf, int size)
 		goto err;
 	}
 
-	extra = 16 - qi;
-	memmove(buf + dcs_index + extra, buf + dcs_index, qi - dcs_index);
+	extra = 16 - i6;
+	memmove(buf + dcs_index + extra, buf + dcs_index, i6 - dcs_index);
 	memset(buf + dcs_index, 0, extra);
 	if (prefix >= 0)
 		buf[16] = prefix;
@@ -232,7 +232,8 @@ int main()
 		":::/128",
 		"2004:::/128",
 		"10df::45::98/12",
-		"fffff:12:0/120",
+		"fffff::12:0/120",
+		"ffff::12:0/120",
 	};
 
 	unsigned char buf[18];
