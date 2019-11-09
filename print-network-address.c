@@ -21,7 +21,7 @@
  * string "a1" would have not been a valid base10 representation
  */
 #if 1
-static int convert_base_from_hex_to_decimal(uint16_t val)
+static int hex2decimal(uint16_t val)
 {
 	int new_val = 0;
 	int decimal_digit;
@@ -38,7 +38,7 @@ static int convert_base_from_hex_to_decimal(uint16_t val)
 
 #else
 
-static int convert_base_from_hex_to_decimal(uint16_t val)
+static int hex2decimal(uint16_t val)
 {
 	int new_val = 0;
 	int decimal_digit;
@@ -63,7 +63,7 @@ int str2ipv6(const char *str, char *buf, int size)
 {
 	const char *s = str;
 	int prefix = -1;
-	int dcs_index = 0; /* double colon start index */
+	int i_dc = 0; /* index of dc (double colon) */
 	int val = 0;
 	int i6 = 0;
 	int extra = 0;
@@ -89,9 +89,9 @@ int str2ipv6(const char *str, char *buf, int size)
 				buf[i6++] = val & 0xff;
 				val = 0;
 				if (*s == ':') {
-					if (i6 == 14 || dcs_index != 0)
+					if (i6 == 14 || i_dc != 0)
 						goto err;
-					dcs_index = i6;
+					i_dc = i6;
 					buf[i6++] = 0;
 					buf[i6++] = 0;
 					s++;
@@ -115,13 +115,13 @@ int str2ipv6(const char *str, char *buf, int size)
 		}
 	}
 
-	if (!dcs_index) {
+	if (!i_dc) {
 		if (prefix < 0 && i6 != 14 || prefix >= 0 && i6 != 16)
 			goto err;
 	}
 
 	if (prefix >= 0 || i4 == 0) {
-		val = convert_base_from_hex_to_decimal(val);
+		val = hex2decimal(val);
 		if (val < 0)
 			goto err;
 	}
@@ -164,8 +164,8 @@ int str2ipv6(const char *str, char *buf, int size)
 	}
 
 	extra = 16 - i6;
-	memmove(buf + dcs_index + extra, buf + dcs_index, i6 - dcs_index);
-	memset(buf + dcs_index, 0, extra);
+	memmove(buf + i_dc + extra, buf + i_dc, i6 - i_dc);
+	memset(buf + i_dc, 0, extra);
 	if (prefix >= 0)
 		buf[16] = prefix;
 	return 0;
