@@ -6,17 +6,19 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-static int convert_base_from_hex_to_decimal(int val)
+static int convert_base_from_hex_to_decimal(uint16_t val)
 {
-	int ret = 0;
-	int tmp;
+	int new_val = 0;
+	int decimal_digit;
+
 	for(int i = 3; i >= 0; i--) {
-		ret *= 10;
-		if ((tmp = val>>(i*4) & 0xf) > 9)
+		decimal_digit = (val >> (i * 4 )) & 0xf;
+		if (decimal_digit > 9)
 			return -1;
-		ret += tmp;
+		new_val *= 10;
+		new_val += decimal_digit;
 	}
-	return ret;
+	return new_val;
 }
 
 /*TODO:
@@ -214,6 +216,7 @@ int main()
 		"ffff:0102::24/48",
 		"::0a0b:28/68",
 		":0a0b::28/68",
+		":0a0b::28:/68",
 		":0a0b:28/68",
 		":0a0b:28:/68",
 		"abcd:dcba:eeff:ffee:dead:beef:8496:1024",
