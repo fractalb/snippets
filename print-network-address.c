@@ -12,7 +12,7 @@ static int convert_from_hex_to_dec(int val)
 	int tmp;
 	for(int i = 3; i >= 0; i--) {
 		ret *= 10;
-		if ((tmp = val>>(i*8) & 0xff) > 9)
+		if ((tmp = val>>(i*4) & 0xf) > 9)
 			return -1;
 		ret += tmp;
 	}
@@ -22,12 +22,12 @@ static int convert_from_hex_to_dec(int val)
 int str2ipv6(const char *str, char *buf, int size)
 {
 	const char *s = str;
-	uint32_t prefix = 128;
+	int prefix = -1;
 	int dbl_colon_start = 0;
 	int val = 0;
 	int qi = 0;
 	int extra = 0;
-	int v4qi = 0;
+	int v4qi = -1;
 	char *b = buf;
 	char c;
 
@@ -56,7 +56,8 @@ int str2ipv6(const char *str, char *buf, int size)
 				*b++ = 0;
 				*b++ = 0;
 				qi++, s++;
-			} else if(*s == '.') {
+			}
+			if(*s == '.') {
 				goto err;
 			}
 		} else if (c == '.' && qi < 7) {
@@ -64,21 +65,26 @@ int str2ipv6(const char *str, char *buf, int size)
 			if (val < 0)
 				goto err;
 			v4qi = 0;
-			s--;
 			break;
 		} else if (c == '/' && qi <= 7) {
 			*b++ = val >> 8;
 			*b++ = val & 0xff;
 			qi++;
 			val = 0;
+			prefix = 128;
 		} else {
 			goto err;
 		}
 	}
 
+	if (prefix >= 0) {
+		val = convert_from_hex_to_dec(val);
+	}
+
 	qi *= 2;
 	dbl_colon_start *= 2;
 
+	s--;
 	while ((c = *s++) != '\0') {
 		if (val > 255)
 			goto err;
@@ -102,7 +108,7 @@ int str2ipv6(const char *str, char *buf, int size)
 	} else if (v4qi == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
 		prefix = val;
-	} else if (v4qi == 0 && qi <= 16 && val <= 128) {
+	} else if (v4qi == -1 && qi <= 16 && val <= 128) {
 		prefix = val;
 	} else {
 		goto err;
@@ -111,6 +117,8 @@ int str2ipv6(const char *str, char *buf, int size)
 	extra = 16 - qi;
 	memmove(buf+dbl_colon_start+extra, buf+dbl_colon_start, qi - dbl_colon_start);
 	memset(buf+dbl_colon_start, 0, extra);
+	if (prefix >= 0)
+		buf[16] = prefix;
 	return 0;
 err:
 	return EINVAL;
@@ -185,9 +193,32 @@ int main()
 				 "...",
 				 "83.213.79/65" };
 
+	const char *ip6strs[] = { "ffff:0102::24/48",
+				  "::0a0b:28/68",
+				  "abcd:dcba:eeff:ffee:dead:beef:8496:1024",
+				  "9232:0:48::23/122",
+				  "::",
+				  "::192.168.43.28/24",
+				};
+	unsigned char buf[18];
+
 	for (int i = 0; i < ARRAY_SIZE(ipstrs); i++) {
 		if (ipstr2ipaddr(ipstrs[i], NULL) != 0)
 			printf("%s is an invalid address\n", ipstrs[i]);
+	}
+
+	for (int i = 0; i < ARRAY_SIZE(ip6strs); i++) {
+		printf("%s -> ", ip6strs[i]);
+		memset(buf, 0, sizeof(buf));
+		if (str2ipv6(ip6strs[i], buf, 17) != 0)
+			printf("is an invalid address\n");
+		else {
+			printf("%02x%02x", buf[0], buf[1]);
+			for(int j = 1; j<8; j++) {
+				printf(":%02x%02x", buf[2*j], buf[2*j+1]);
+			}
+			printf("/%d\n", buf[16]);
+		}
 	}
 
 	return 0;
