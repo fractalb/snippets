@@ -11,8 +11,8 @@ static int convert_base_from_hex_to_decimal(uint16_t val)
 	int new_val = 0;
 	int decimal_digit;
 
-	for(int i = 3; i >= 0; i--) {
-		decimal_digit = (val >> (i * 4 )) & 0xf;
+	for (int i = 3; i >= 0; i--) {
+		decimal_digit = (val >> (i * 4)) & 0xf;
 		if (decimal_digit > 9)
 			return -1;
 		new_val *= 10;
@@ -30,7 +30,7 @@ int str2ipv6(const char *str, char *buf, int size)
 {
 	const char *s = str;
 	int prefix = -1;
-	int dcs_index = -1; /* double colon start index */
+	int dcs_index = 0; /* double colon start index */
 	int val = 0;
 	int qi = 0;
 	int extra = 0;
@@ -57,14 +57,14 @@ int str2ipv6(const char *str, char *buf, int size)
 			qi++;
 			val = 0;
 			if (*s == ':') {
-				if (qi == 7 || dcs_index > -1)
+				if (qi == 7 || dcs_index != 0)
 					goto err;
 				dcs_index = qi;
 				*b++ = 0;
 				*b++ = 0;
 				qi++, s++;
 			}
-			if(*s == '.' || *s == ':') {
+			if (*s == '.' || *s == ':') {
 				goto err;
 			}
 		} else if (c == '.' && qi < 7) {
@@ -84,7 +84,7 @@ int str2ipv6(const char *str, char *buf, int size)
 		}
 	}
 
-	if (dcs_index < 0 && qi < 7)
+	if (!dcs_index && qi < 7)
 		goto err;
 
 	qi *= 2;
@@ -93,7 +93,6 @@ int str2ipv6(const char *str, char *buf, int size)
 	if (prefix >= 0) {
 		val = convert_base_from_hex_to_decimal(val);
 	}
-
 
 	s--;
 	while ((c = *s++) != '\0') {
@@ -114,7 +113,7 @@ int str2ipv6(const char *str, char *buf, int size)
 	}
 
 	if (v4qi == 3 && val <= 255) {
-		*b++ =  val;
+		*b++ = val;
 		qi++;
 	} else if (v4qi == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
@@ -133,8 +132,8 @@ int str2ipv6(const char *str, char *buf, int size)
 	}
 
 	extra = 16 - qi;
-	memmove(buf+dcs_index+extra, buf+dcs_index, qi - dcs_index);
-	memset(buf+dcs_index, 0, extra);
+	memmove(buf + dcs_index + extra, buf + dcs_index, qi - dcs_index);
+	memset(buf + dcs_index, 0, extra);
 	if (prefix >= 0)
 		buf[16] = prefix;
 	return 0;
@@ -149,7 +148,7 @@ int str2ipv4(const char *str, uint32_t *ipaddr)
 	uint32_t mask = -1;
 	uint32_t ip = 0;
 	int val = 0;
-	int qi = 0;
+	int i4 = 0;
 	char c;
 
 	while ((c = *s++) != '\0') {
@@ -159,20 +158,20 @@ int str2ipv4(const char *str, uint32_t *ipaddr)
 		if ('0' <= c && c <= '9') {
 			val *= 10;
 			val += c - '0';
-		} else if ((c == '.' && qi < 3) || (c == '/' && qi == 3)) {
+		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
 			ip <<= 8;
 			ip += val;
-			qi++;
+			i4++;
 			val = 0;
 		} else {
 			goto err;
 		}
 	}
 
-	if (qi == 3 && val <= 255) {
+	if (i4 == 3 && val <= 255) {
 		ip <<= 8;
 		ip += val;
-	} else if (qi == 4 && val <= 32) {
+	} else if (i4 == 4 && val <= 32) {
 		/* val is actually no. of bits of subnet mask */
 		mask >>= 32 - val;
 		mask <<= 32 - val;
@@ -227,6 +226,7 @@ int main()
 		"::192.168.43.248",
 		"::192.168.43.248/34",
 		"::257.168.43.248/34",
+		"::157.168.43.248.28/30",
 		"::/132",
 		"::/128",
 		":::/128",
