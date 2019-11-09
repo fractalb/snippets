@@ -48,7 +48,8 @@ static int hex2decimal(uint16_t val)
 		decimal_digit = val & 0xf;
 		if (decimal_digit > 9)
 			return -1;
-		new_val += mul *decimal_digit mul *= 10;
+		new_val += mul *decimal_digit;
+		mul *= 10;
 	}
 	return new_val;
 }
@@ -59,16 +60,20 @@ static int hex2decimal(uint16_t val)
  * Currently prefix 34 (> 32) and anything <= 128 is taken
  * as valid prefix even though IPv4 dotted quad is in inside IPv6.
  */
-int str2ipv6(const char *str, char *buf, int size)
+int str2ipv6(const char *str, char buf[16], int *prefix)
 {
 	const char *s = str;
-	int prefix = -1;
+	int px = -1;
 	int i_dc = 0; /* index of dc (double colon) */
 	int val = 0;
 	int i6 = 0;
-	int extra = 0;
 	int i4 = -1;
+	int nz = 0; /* no. of zero bytes */
 	char c;
+	char buf2[16];
+
+	if (buf == NULL)
+		buf = buf2;
 
 	while ((c = *s++) != '\0') {
 		if (val > 65535)
@@ -83,7 +88,7 @@ int str2ipv6(const char *str, char *buf, int size)
 		} else if ('A' <= c && c <= 'F') {
 			val *= 16;
 			val += c - 'A' + 10;
-		} else if (prefix < 0) {
+		} else if (px < 0) {
 			if (c == ':' && i6 < 13) {
 				buf[i6++] = val >> 8;
 				buf[i6++] = val & 0xff;
@@ -106,7 +111,7 @@ int str2ipv6(const char *str, char *buf, int size)
 				buf[i6++] = val >> 8;
 				buf[i6++] = val & 0xff;
 				val = 0;
-				prefix = 128;
+				px = 128;
 			} else {
 				goto err;
 			}
@@ -116,18 +121,17 @@ int str2ipv6(const char *str, char *buf, int size)
 	}
 
 	if (!i_dc) {
-		if (prefix < 0 && i6 != 14 || prefix >= 0 && i6 != 16)
+		if (px < 0 && i6 != 14 || px >= 0 && i6 != 16)
 			goto err;
 	}
 
-	if (prefix >= 0 || i4 == 0) {
+	if (px >= 0 || i4 == 0) {
 		val = hex2decimal(val);
 		if (val < 0)
 			goto err;
 	}
 
-	s--;
-	while ((c = *s++) != '\0') {
+	for (s--; (c = *s++) != '\0';) {
 		if (val > 255)
 			goto err;
 
@@ -149,11 +153,11 @@ int str2ipv6(const char *str, char *buf, int size)
 		buf[i6++] = val;
 	} else if (i4 == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
-		prefix = val;
+		px = val;
 	} else if (i4 == -1 && i6 <= 16) {
-		if (prefix >= 0 && val <= 128) {
-			prefix = val;
-		} else if (prefix < 0 && i6 <= 14) {
+		if (px >= 0 && val <= 128) {
+			px = val;
+		} else if (px < 0 && i6 <= 14) {
 			buf[i6++] = val >> 8;
 			buf[i6++] = val & 0xff;
 		} else {
@@ -163,21 +167,23 @@ int str2ipv6(const char *str, char *buf, int size)
 		goto err;
 	}
 
-	extra = 16 - i6;
-	memmove(buf + i_dc + extra, buf + i_dc, i6 - i_dc);
-	memset(buf + i_dc, 0, extra);
-	if (prefix >= 0)
-		buf[16] = prefix;
+	nz = 16 - i6;
+	memmove(&buf[i_dc + nz], &buf[i_dc], i6 - i_dc);
+	memset(&buf[i_dc], 0, nz);
+
+	if (px >= 0 && prefix)
+		*prefix = px;
+
 	return 0;
 err:
 	return EINVAL;
 }
 
 /* IPv4 CIDR to subnet address */
-int str2ipv4(const char *str, uint32_t *ipaddr)
+int str2ipv4(const char *str, uint32_t *ipaddr, int *prefix)
 {
 	const char *s = str;
-	uint32_t mask = -1;
+	int mask = -1;
 	uint32_t ip = 0;
 	int val = 0;
 	int i4 = 0;
@@ -207,18 +213,17 @@ int str2ipv4(const char *str, uint32_t *ipaddr)
 		ip += val;
 	} else if (i4 == 4 && val <= 32) {
 		/* val is actually no. of bits of subnet mask */
-		mask >>= 32 - val;
-		mask <<= 32 - val;
+		mask = val;
 	} else {
 		goto err;
 	}
 
-	ip &= mask;
 	if (ipaddr)
 		*ipaddr = ip;
-	else
-		printf("%s = %d.%d.%d.%d\n", str, (ip >> 24) & 0xff,
-		       (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
+
+	if (prefix)
+		*prefix = mask;
+
 	return 0;
 err:
 	return EINVAL;
@@ -283,22 +288,27 @@ int main()
 
 	unsigned char buf[18];
 
+	uint32_t ipaddr;
+	int prefix;
 	for (int i = 0; i < ARRAY_SIZE(ipstrs); i++) {
-		if (str2ipv4(ipstrs[i], NULL) != 0)
-			printf("%s is an invalid address\n", ipstrs[i]);
+		printf("%s -> ", ipstrs[i]);
+		if (str2ipv4(ipstrs[i], &ipaddr, &prefix) != 0)
+			printf("Invalid IPv4 address\n");
+		else
+			printf("%x/%d\n",ipaddr, prefix);
 	}
 
 	for (int i = 0; i < ARRAY_SIZE(ip6strs); i++) {
 		printf("%s -> ", ip6strs[i]);
 		memset(buf, 0, sizeof(buf));
-		if (str2ipv6(ip6strs[i], buf, 17) != 0)
-			printf("is an invalid address\n");
+		if (str2ipv6(ip6strs[i], buf, &prefix) != 0)
+			printf("Invalid IPv6 address\n");
 		else {
 			printf("%02x%02x", buf[0], buf[1]);
 			for (int j = 1; j < 8; j++) {
 				printf(":%02x%02x", buf[2 * j], buf[2 * j + 1]);
 			}
-			printf("/%d\n", buf[16]);
+			printf("/%d\n", prefix);
 		}
 	}
 
