@@ -48,8 +48,7 @@ static int convert_base_from_hex_to_decimal(uint16_t val)
 		decimal_digit = val & 0xf;
 		if (decimal_digit > 9)
 			return -1;
-		new_val += mul * decimal_digit
-		mul *= 10;
+		new_val += mul *decimal_digit mul *= 10;
 	}
 	return new_val;
 }
@@ -69,7 +68,6 @@ int str2ipv6(const char *str, char *buf, int size)
 	int i6 = 0;
 	int extra = 0;
 	int i4 = -1;
-	char *b = buf;
 	char c;
 
 	while ((c = *s++) != '\0') {
@@ -85,47 +83,45 @@ int str2ipv6(const char *str, char *buf, int size)
 		} else if ('A' <= c && c <= 'F') {
 			val *= 16;
 			val += c - 'A' + 10;
-		} else if (c == ':' && i6 < 7) {
-			*b++ = val >> 8;
-			*b++ = val & 0xff;
-			i6++;
-			val = 0;
-			if (*s == ':') {
-				if (i6 == 7 || dcs_index != 0)
+		} else if (prefix < 0) {
+			if (c == ':' && i6 < 13) {
+				buf[i6++] = val >> 8;
+				buf[i6++] = val & 0xff;
+				val = 0;
+				if (*s == ':') {
+					if (i6 == 14 || dcs_index != 0)
+						goto err;
+					dcs_index = i6;
+					buf[i6++] = 0;
+					buf[i6++] = 0;
+					s++;
+				}
+				if (*s == '.' || *s == ':') {
 					goto err;
-				dcs_index = i6;
-				*b++ = 0;
-				*b++ = 0;
-				i6++, s++;
+				}
+			} else if (c == '.' && i6 < 13) {
+				i4 = 0;
+				break; /* IPv4 parsing now */
+			} else if (c == '/' && i6 < 15) {
+				buf[i6++] = val >> 8;
+				buf[i6++] = val & 0xff;
+				val = 0;
+				prefix = 128;
 			}
-			if (*s == '.' || *s == ':') {
-				goto err;
-			}
-		} else if (c == '.' && i6 < 7) {
-			val = convert_base_from_hex_to_decimal(val);
-			if (val < 0)
-				goto err;
-			i4 = 0;
-			break;
-		} else if (c == '/' && i6 <= 7) {
-			*b++ = val >> 8;
-			*b++ = val & 0xff;
-			i6++;
-			val = 0;
-			prefix = 128;
 		} else {
 			goto err;
 		}
 	}
 
-	if (!dcs_index && i6 < 7)
-		goto err;
+	if (!dcs_index) {
+		if (prefix < 0 && i6 != 14 || prefix >= 0 && i6 != 16)
+			goto err;
+	}
 
-	i6 *= 2;
-	dcs_index *= 2;
-
-	if (prefix >= 0) {
+	if (prefix >= 0 || i4 == 0) {
 		val = convert_base_from_hex_to_decimal(val);
+		if (val < 0)
+			goto err;
 	}
 
 	s--;
@@ -137,8 +133,9 @@ int str2ipv6(const char *str, char *buf, int size)
 			val *= 10;
 			val += c - '0';
 		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-			*b++ = val;
-			i6++;
+			if (*s == '.') // Two consecutive dots
+				goto err;
+			buf[i6++] = val;
 			i4++;
 			val = 0;
 		} else {
@@ -147,8 +144,7 @@ int str2ipv6(const char *str, char *buf, int size)
 	}
 
 	if (i4 == 3 && val <= 255) {
-		*b++ = val;
-		i6++;
+		buf[i6++] = val;
 	} else if (i4 == 4 && val <= 128) {
 		/* val is actually no. of bits of subnet mask */
 		prefix = val;
@@ -193,6 +189,8 @@ int str2ipv4(const char *str, uint32_t *ipaddr)
 			val *= 10;
 			val += c - '0';
 		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
+			if (*s == '.') // Two consecutive dots
+				goto err;
 			ip <<= 8;
 			ip += val;
 			i4++;
@@ -243,6 +241,9 @@ int main()
 				 "59.32..4",
 				 "....",
 				 "...",
+				 ".../30",
+				 "..",
+				 "../20.",
 				 "83.213.79/65" };
 
 	const char *ip6strs[] = {
@@ -253,6 +254,7 @@ int main()
 		":0a0b:28/68",
 		":0a0b:28:/68",
 		"abcd:dcba:eeff:ffee:dead:beef:8496:1024",
+		"abcd:dcba:eeff:ffee:dead:beef:8496::",
 		"abcd:dcba:eeff:ffee:dead:beef:8496:1024/98",
 		"9232:0:48::23/122",
 		"::",
@@ -260,9 +262,14 @@ int main()
 		"::192.168.43.248",
 		"::192.168.43.248/34",
 		"::257.168.43.248/34",
+		"::/192.168.43.28",
+		"::192..43.28",
+		"::192..43.28/30",
+		"::/192.43..28/30",
 		"::157.168.43.248.28/30",
 		"::/132",
 		"::/128",
+		":://128",
 		":::/128",
 		"2004:::/128",
 		"10df::45::98/12",
