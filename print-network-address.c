@@ -133,7 +133,7 @@ int str2ipv6(const char *str, char *buf, int size)
 			val *= 10;
 			val += c - '0';
 		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-			if (*s == '.') // Two consecutive dots
+			if (*s == '.' || *s == '/') // Two consecutive dots
 				goto err;
 			buf[i6++] = val;
 			i4++;
@@ -189,7 +189,7 @@ int str2ipv4(const char *str, uint32_t *ipaddr)
 			val *= 10;
 			val += c - '0';
 		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-			if (*s == '.') // Two consecutive dots
+			if (*s == '.' || *s == '/') // Two consecutive dots
 				goto err;
 			ip <<= 8;
 			ip += val;
@@ -234,6 +234,7 @@ int main()
 				 "255.255.255.255/31",
 				 "254.254.255.255/30",
 				 "14.6.8.1/32",
+				 "14.6.8./32",
 				 "10.2.3.29",
 				 "10.2.2.2.32",
 				 "49.58.64.256",
