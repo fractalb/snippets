@@ -6,6 +6,21 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
+/* Converts an integer value (uint16_t) which has been
+ * obtained by interpreting a string of digits in base16
+ * rather than base10 into the actual base10 value that
+ * would have been obtained if the string has been treated
+ * to be in base10 representation
+ *
+ * Examples:
+ *
+ * "92" -> 145 if the string is interpreted to be a hex representation
+ * convert_base(145) returns 92 which is the value in base10 representation
+ *
+ * "a1" -> 161 convert_base(161) returns -1 becaue the original
+ * string "a1" would have not been a valid base10 representation
+ */
+#if 1
 static int convert_base_from_hex_to_decimal(uint16_t val)
 {
 	int new_val = 0;
@@ -20,6 +35,25 @@ static int convert_base_from_hex_to_decimal(uint16_t val)
 	}
 	return new_val;
 }
+
+#else
+
+static int convert_base_from_hex_to_decimal(uint16_t val)
+{
+	int new_val = 0;
+	int decimal_digit;
+	int mul = 1;
+
+	while (val) {
+		decimal_digit = val & 0xf;
+		if (decimal_digit > 9)
+			return -1;
+		new_val += mul * decimal_digit
+		mul *= 10;
+	}
+	return new_val;
+}
+#endif
 
 /*TODO:
  * ::192.168.43.248/34  Should it be considered invalid?
