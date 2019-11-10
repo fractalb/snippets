@@ -21,7 +21,7 @@
  * string "a1" would have not been a valid base10 representation
  */
 #if 1
-static int hex2decimal(uint16_t val)
+static int hex2base10(uint16_t val)
 {
 	int new_val = 0;
 	int decimal_digit;
@@ -38,7 +38,7 @@ static int hex2decimal(uint16_t val)
 
 #else
 
-static int hex2decimal(uint16_t val)
+static int hex2base10(uint16_t val)
 {
 	int new_val = 0;
 	int decimal_digit;
@@ -48,7 +48,7 @@ static int hex2decimal(uint16_t val)
 		decimal_digit = val & 0xf;
 		if (decimal_digit > 9)
 			return -1;
-		new_val += mul *decimal_digit;
+		new_val += mul * decimal_digit;
 		mul *= 10;
 	}
 	return new_val;
@@ -126,7 +126,7 @@ int str2ipv6(const char *str, char buf[16], int *prefix)
 	}
 
 	if (px >= 0 || i4 == 0) {
-		val = hex2decimal(val);
+		val = hex2base10(val);
 		if (val < 0)
 			goto err;
 	}
@@ -255,86 +255,151 @@ void print_ipv6(unsigned char buf[16], int prefix)
 	return;
 }
 
+typedef enum {
+	VALID = 1,
+	INVALID = 2,
+} result_t;
+
+const char *result_str(result_t t)
+{
+	const char *s = NULL;
+	switch (t) {
+	case VALID:
+		s = "VALID";
+		break;
+	case INVALID:
+		s = "INVALID";
+		break;
+	default:
+		s = "UNKNOWN";
+		break;
+	}
+
+	return s;
+}
+
+typedef struct {
+	const char *s;
+	result_t expected;
+} test_case_t;
+
+test_case_t LAST_TEST_CASE = { 0, 0 };
+
+typedef enum { IPv4, IPv6, UNKNOWN_TEST } TEST_NAME;
+
+result_t run_test(TEST_NAME t, const void *test_args)
+{
+	if (t == IPv4) {
+		if (str2ipv4((const char *)test_args, NULL, NULL) == 0)
+			return VALID;
+		else
+			return INVALID;
+	} else if (t == IPv6) {
+		if (str2ipv6((const char *)test_args, NULL, NULL) == 0)
+			return VALID;
+		else
+			return INVALID;
+	}
+}
+
 int main()
 {
-	const char *ipv4_str[] = { "10.1.2.3/22",
-				   "192.168.32.2/29",
-				   "172.16.129.34/21",
-				   "192.1.164.58/26",
-				   "0.0.0.0/0",
-				   "11.12.13.14/4",
-				   "255.255.255.255/32",
-				   "255.255.255.255/31",
-				   "254.254.255.255/30",
-				   "14.6.8.1/32",
-				   "14.6.8./32",
-				   "10.2.3.29",
-				   "10.2.2.2.32",
-				   "49.58.64.256",
-				   "59.32.4",
-				   "59.32..4",
-				   "....",
-				   "...",
-				   ".../30",
-				   "..",
-				   "../20.",
-				   "83.213.79/65" };
-
-	const char *ipv6_str[] = {
-		"ffff:0102::24/48",
-		"::0a0b:28/68",
-		":0a0b::28/68",
-		":0a0b::28:/68",
-		":0a0b:28/68",
-		":0a0b:28:/68",
-		"abcd:dcba:eeff:ffee:dead:beef:8496:1024",
-		"abcd:dcba:eeff:ffee:dead:beef:8496::",
-		"abcd:dcba:eeff:ffee:dead:beef:8496:1024/98",
-		"9232:0:48g::23/122",
-		"9232:0:48::23/122",
-		"::",
-		"::192.168.43.28/24",
-		"::192.168.43.248",
-		"::192.168.43.248/34",
-		"::257.168.43.248/34",
-		"::/192.168.43.28",
-		"::192..43.28",
-		"::192..43.28/30",
-		"::/192.43..28/30",
-		"::157.168.43.248.28/30",
-		"::/132",
-		"::/128",
-		":://128",
-		":::/128",
-		"2004:::/128",
-		"10df::45::98/12",
-		"fffff::12:0/120",
-		"ffff::12:0/120",
+	test_case_t ipv4_arr[] = { { "10.1.2.3/22", VALID },
+				   { "192.168.32.2/29", VALID },
+				   { "172.16.129.34/21", VALID },
+				   { "192.1.164.58/26", VALID },
+				   { "0.0.0.0/0", VALID },
+				   { "11.12.13.14/4", VALID },
+				   { "255.255.255.255/32", VALID },
+				   { "255.255.255.255/31", VALID },
+				   { "254.254.255.255/30", VALID },
+				   { "14.6.8.1/32", VALID },
+				   { "14.6.8./32", INVALID },
+				   { "10.2.3.29", VALID },
+				   { "10.2.2.2.32", INVALID },
+				   { "49.58.64.256", INVALID },
+				   { "59.32.4", INVALID },
+				   { "59.32..4", INVALID },
+				   { "....", INVALID },
+				   { "...", INVALID },
+				   { ".../30", INVALID },
+				   { "..", INVALID },
+				   { "../20.", INVALID },
+				   { "83.213.79/65", INVALID },
+				   LAST_TEST_CASE };
+	test_case_t ipv6_arr[] = {
+		{ "ffff:0102::24/48", VALID },
+		{ "::0a0b:28/68", VALID },
+		{ ":0a0b::28/68", VALID },
+		{ ":0a0b::28:/68", VALID },
+		{ ":0a0b:28/68", INVALID },
+		{ ":0a0b:28:/68", INVALID },
+		{ "abcd:dcba:eeff:ffee:dead:beef:8496:1024", VALID },
+		{ "abcd:dcba:eeff:ffee:dead:beef:8496::", INVALID },
+		{ "abcd:dcba:eeff:ffee:dead:beef:8496:1024/98", VALID },
+		{ "9232:0:48g::23/122", INVALID },
+		{ "9232:0:48::23/122", VALID },
+		{ "::", VALID },
+		{ "::192.168.43.28/24", VALID },
+		{ "::192.168.43.248", VALID },
+		{ "::192.168.43.248/34", VALID },
+		{ "::257.168.43.248/34", INVALID },
+		{ "::/192.168.43.28", INVALID },
+		{ "::192..43.28", INVALID },
+		{ "::192..43.28/30", INVALID },
+		{ "::/192.43..28/30", INVALID },
+		{ "::157.168.43.248.28/30", INVALID },
+		{ "::/132", INVALID },
+		{ "::/128", VALID },
+		{ ":://128", INVALID },
+		{ ":::/128", INVALID },
+		{ "2004:::/128", INVALID },
+		{ "10df::45::98/12", INVALID },
+		{ "fffff::12:0/120", INVALID },
+		{ "ffff::12:0/120", VALID },
+		LAST_TEST_CASE,
 	};
 
-	unsigned char buf[18];
-
-	uint32_t ipaddr;
-	int prefix;
-	for (int i = 0; i < ARRAY_SIZE(ipv4_str); i++) {
-		ipaddr = prefix = -1;
-		printf("%s -> ", ipv4_str[i]);
-		if (str2ipv4(ipv4_str[i], &ipaddr, &prefix) != 0)
-			printf("Invalid IPv4 address\n");
-		else
-			print_ipv4(ipaddr, prefix);
-	}
-
-	for (int i = 0; i < ARRAY_SIZE(ipv6_str); i++) {
-		prefix = -1;
-		printf("%s -> ", ipv6_str[i]);
-		memset(buf, 0, sizeof(buf));
-		if (str2ipv6(ipv6_str[i], buf, &prefix) != 0)
-			printf("Invalid IPv6 address\n");
-		else {
-			print_ipv6(buf, prefix);
+	printf("*****IPv4 Tests*****\n");
+	int passed_tests = 0;
+	int failed_tests = 0;
+	result_t r;
+	for (int i = 0; ipv4_arr[i].s != LAST_TEST_CASE.s; i++) {
+		if ((r = run_test(IPv4, ipv4_arr[i].s)) !=
+		    ipv4_arr[i].expected) {
+			failed_tests++;
+			printf("%s -> expected: %s, parsed: %s\n",
+			       ipv4_arr[i].s, result_str(ipv4_arr[i].expected),
+			       result_str(r));
+			;
+		} else {
+			passed_tests++;
 		}
 	}
+
+	printf("Tests Passed: %d\nTests Failed: %d\n", passed_tests,
+	       failed_tests);
+
+	/*****************************************************************************/
+
+	printf("*****IPv6 Tests*****\n");
+	passed_tests = 0;
+	failed_tests = 0;
+	for (int i = 0; ipv6_arr[i].s != LAST_TEST_CASE.s; i++) {
+		if ((r = run_test(IPv6, ipv6_arr[i].s)) !=
+		    ipv6_arr[i].expected) {
+			failed_tests++;
+			printf("%s -> expected: %s, parsed: %s\n",
+			       ipv6_arr[i].s, result_str(ipv6_arr[i].expected),
+			       result_str(r));
+			;
+		} else {
+			passed_tests++;
+		}
+	}
+
+	printf("Tests Passed: %d\nTests Failed: %d\n", passed_tests,
+	       failed_tests);
 
 	return 0;
 }
