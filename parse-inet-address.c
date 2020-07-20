@@ -6,7 +6,7 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-/* Converts an integer value (uint16_t) which has been
+/** Converts an integer value (uint16_t) which has been
  * obtained by interpreting a string of digits in base16
  * rather than base10 into the actual base10 value that
  * would have been obtained if the string has been treated
@@ -20,40 +20,20 @@
  * "a1" -> 161 convert_base(161) returns -1 becaue the original
  * string "a1" would have not been a valid base10 representation
  */
-#if 1
 static int hex2base10(uint16_t val)
 {
-	int new_val = 0;
+	int base10_val = 0;
 	int decimal_digit;
 
 	for (int i = 3; i >= 0; i--) {
 		decimal_digit = (val >> (i * 4)) & 0xf;
 		if (decimal_digit > 9)
 			return -1;
-		new_val *= 10;
-		new_val += decimal_digit;
+		base10_val *= 10;
+		baes10_val += decimal_digit;
 	}
-	return new_val;
+	return base10_val;
 }
-
-#else
-
-static int hex2base10(uint16_t val)
-{
-	int new_val = 0;
-	int decimal_digit;
-	int mul = 1;
-
-	while (val) {
-		decimal_digit = val & 0xf;
-		if (decimal_digit > 9)
-			return -1;
-		new_val += mul * decimal_digit;
-		mul *= 10;
-	}
-	return new_val;
-}
-#endif
 
 /*TODO:
  * ::192.168.43.248/34  Should it be considered invalid?
@@ -63,12 +43,12 @@ static int hex2base10(uint16_t val)
 int str2ipv6(const char *str, char buf[16], int *prefix)
 {
 	const char *s = str;
-	int px = -1;
+	int px   = -1;
 	int i_dc = 0; /* index of dc (double colon) */
-	int val = 0;
-	int i6 = 0;
-	int i4 = -1;
-	int nz = 0; /* no. of zero bytes */
+	int val  = 0;
+	int i6   = 0;
+	int i4   = -1;
+	int nz   = 0; /* no. of zero bytes */
 	char c;
 	char buf2[16];
 
