@@ -30,7 +30,7 @@ static int hex2base10(uint16_t val)
 		if (decimal_digit > 9)
 			return -1;
 		base10_val *= 10;
-		baes10_val += decimal_digit;
+		base10_val += decimal_digit;
 	}
 	return base10_val;
 }
