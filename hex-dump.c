@@ -101,7 +101,6 @@ int hex_dump(char *hexbuf, int hbsize, char *buf, int size)
 		size   -= 16;
 	}
 
-
 	if (hbsize >= 78) {
 		j = conv_nbytes(hexbuf, buf, size);
 		rc = 0;
@@ -133,9 +132,9 @@ int main()
 
 	while (true) {
 		str = fgets(pc, 200, stdin);
-		if (str == NULL)
-			break;
+		if (!str) break;
 		hex_dump(hexbuf, sizeof(hexbuf), str, strlen(str));
 		printf("%s", hexbuf);
 	}
+	printf("\n");
 }
