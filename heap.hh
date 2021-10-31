@@ -82,8 +82,13 @@ class Heap {
       pop_heap(v.begin(), v.end(), std::greater<T>());
     v.pop_back();
   }
-  void remove(const T& elem) {
-    // std::cout << "Removing: " << elem << '\n';
+
+  void remove2(const T& elem) {
+    // This will remove the given element and then brought its parent element
+    // down to occupy the position of the removed element and do the same
+    // recursively until we reach the root node. Now the root node needs to be
+    // removed/replaced with a new item and then call the `sink` member
+    // function.
     auto it = find(v.begin(), v.end(), elem);
     if (it == v.end())
       assert(0);
@@ -98,9 +103,21 @@ class Heap {
       v[index] = v[parent];
       index = parent;
     }
-    // The deleted element will be at top. Heap property is lost.
-    // std::swap(v[index], v[n - 1]);
-    // v.pop_back();
+    // Now, the root element needs to deleted or replaced.
+  }
+
+  void remove(const T& elem) {
+    remove2(elem);
+    // Now The root element need to be deleted.
+    v.front() = v.back();  // Heap property is lost.
+    v.pop_back();
+    sink();  // Restore the heap property
+  }
+
+  void replace(const T& elem, const T& newelem) {
+    remove2(elem);
+    top() = newelem;
+    sink();  // sink down the new element
   }
 };
 
