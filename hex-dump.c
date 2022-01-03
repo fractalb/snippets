@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 
-/* Prints a given buf in hex to a given buffer, along with NUL terminating character.
+/* Prints a given buf in hex to a given buffer, along with a NUL terminating character.
  * Offset + hex representation of 16 bytes + ascii signature of 16 bytes
  */
 
@@ -19,8 +19,7 @@ static inline char hex(char c)
 	return 0;
 }
 
-/** This is only a helper function. It should not be called directly
- * for the users.
+/** This is only a helper function. This is not intended to be called by the end-users directly.
  * Prints 16 bytes at a time with offset and ascii signature
  * This function consumes 16 bytes from `buf` and writes 70 bytes into `hexbuf`.
  * The caller must ensure that `buf` contains enough input data(16 bytes) and
