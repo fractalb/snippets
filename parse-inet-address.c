@@ -1,4 +1,5 @@
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -159,6 +160,73 @@ err:
 	return EINVAL;
 }
 
+
+static inline bool is_ascii_digit(int x)
+{
+        return x >= '0' && x <= '9';
+}
+
+static inline const char *parse_quad(const char *str, int *value)
+{
+        // Make sure no zero padding on left.
+        // Rejects 00, 01, 001, but accepts 0.
+        if (*str == '0' && is_ascii_digit(*(str + 1)))
+                goto err;
+        int val = 0;
+        int i = 0;
+        for (; i < 3 && is_ascii_digit(*str); i++, str++) {
+                val *= 10;
+                val += *str - '0';
+                continue;
+        }
+        // Reject no digits case
+        if (i == 0) goto err;
+        // Reject more than 3 digits
+        if (i == 3 && is_ascii_digit(*str)) goto err;
+        *value = val;
+        return str;
+err:
+        *value = -1;
+        return str;
+}
+
+int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix)
+{
+        unsigned quad1, quad2, quad3, quad4;
+        const char *remainder = ipquad;
+        int subnet_mask = 32;
+        int value;
+        remainder = parse_quad(remainder, &value);
+        if (value < 0 || value > 255 || *remainder != '.')
+                goto err;
+        quad1 = value;
+        remainder = parse_quad(++remainder, &value);
+        if (value < 0 || value > 255 || *remainder != '.')
+                goto err;
+        quad2 = value;
+        remainder = parse_quad(++remainder, &value);
+        if (value < 0 || value > 255 || *remainder != '.')
+                goto err;
+        quad3 = value;
+        remainder = parse_quad(++remainder, &value);
+        if (value < 0 || value > 255)
+                goto err;
+        quad4 = value;
+        if (*remainder == '/') {
+                remainder = parse_quad(++remainder, &subnet_mask);
+        }
+        if (*remainder != '\0' || subnet_mask < 0 || subnet_mask > 32)
+                goto err;
+        if (ipaddr)
+                *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
+        if (prefix)
+                *prefix = subnet_mask;
+        return 0;
+err:
+        return -1;
+}
+
+#if 0
 /* IPv4 CIDR to subnet address */
 int str2ipv4(const char *str, uint32_t *ipaddr, int *prefix)
 {
@@ -208,6 +276,7 @@ int str2ipv4(const char *str, uint32_t *ipaddr, int *prefix)
 err:
 	return EINVAL;
 }
+#endif
 
 void print_ipv4(uint32_t ip, int prefix)
 {
@@ -286,6 +355,21 @@ int main()
 {
 	test_case_t ipv4_arr[] = { { "10.1.2.3/22", VALID },
 				   { "192.168.32.2/29", VALID },
+				   { "01.000.0.0/0", INVALID },
+				   { "1.000.0.0/0", INVALID },
+				   { "1.0.0.0/02", INVALID },
+				   { "+1.0.0.0/0", INVALID },
+				   { "1. 10.0.0", INVALID },
+				   { "192.168.32.2a", INVALID },
+				   { "192.168.32.2/", INVALID },
+				   { "192.168.32.2/33", INVALID },
+				   { "192.168.2/29", INVALID },
+				   { "192.168.2", INVALID },
+				   { "192...", INVALID },
+				   { ".192.12.34", INVALID },
+				   { "00.192.12.34", INVALID },
+				   { "0.192.12.34", VALID },
+				   { "192.168.2.3", VALID },
 				   { "172.16.129.34/21", VALID },
 				   { "192.1.164.58/26", VALID },
 				   { "0.0.0.0/0", VALID },
