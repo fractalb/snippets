@@ -7,19 +7,24 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-/** Converts an integer value (uint16_t) which has been
- * obtained by interpreting a string of digits in base16
- * rather than base10 into the actual base10 value that
- * would have been obtained if the string has been treated
- * to be in base10 representation
+/** This function will try to interpret the hex representation
+ * of the given value as a base10 value and returns that value.
+ *
+ * If the hex reprsentation of the given value contains
+ * alphabets (a - f) then it can't be interpreted as a
+ * base10 value and this function will return -1.
  *
  * Examples:
  *
- * "92" -> 145 if the string is interpreted to be a hex representation
- * convert_base(145) returns 92 which is the value in base10 representation
+ *1. input : 146
  *
- * "a1" -> 161 convert_base(161) returns -1 becaue the original
- * string "a1" would have not been a valid base10 representation
+ *   146 => 0x92
+ *   hex2base10(146) -> 92 (base10 value)
+ *
+ *2. input : 161
+ *
+ *   161 => 0xa1
+ *   hex2base10(161) -> -1 ('a' can't be treated as a decimal number)
  */
 static int hex2base10(uint16_t val)
 {
