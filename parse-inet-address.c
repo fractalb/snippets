@@ -171,9 +171,22 @@ static inline bool is_ascii_digit(int x)
         return x >= '0' && x <= '9';
 }
 
+/** Tries to parse a number (atmost 3 digits)
+ * in an IPv4 quad. Stops at first non-digit
+ * character or after the first three digits.
+ * `value` will be set to -1 if there are zero
+ * digits or more than 3 digits.
+ *
+ *   ┌─► str argument
+ *   │┌───┐
+ *   └─192│.168.2.1"
+ *    └───┘│
+ *         └─► str returned
+ */
 static inline const char *parse_quad(const char *str, int *value)
 {
-        // Make sure no zero padding on left.
+        *value = -1;
+        // Make sure, no left padding of zeroes.
         // Rejects 00, 01, 001, but accepts 0.
         if (*str == '0' && is_ascii_digit(*(str + 1)))
                 goto err;
@@ -184,14 +197,12 @@ static inline const char *parse_quad(const char *str, int *value)
                 val += *str - '0';
                 continue;
         }
-        // Reject no digits case
+        // Reject no digit characters case
         if (i == 0) goto err;
-        // Reject more than 3 digits
+        // Reject more than 3 digit characters
         if (i == 3 && is_ascii_digit(*str)) goto err;
         *value = val;
-        return str;
 err:
-        *value = -1;
         return str;
 }
 
