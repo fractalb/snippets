@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 /** This function will try to interpret the hex representation
  * of the given value as a base10 value and returns that value.
