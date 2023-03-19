@@ -252,58 +252,6 @@ err:
   return -1;
 }
 
-#if 0
-/* IPv4 CIDR to subnet address */
-int str2ipv4(const char *str, uint32_t *ipaddr, int *prefix)
-{
-	const char *s = str;
-	int mask = -1;
-	uint32_t ip = 0;
-	int val = 0;
-	int i4 = 0;
-	char c;
-
-	while ((c = *s++) != '\0') {
-		if (val > 255)
-			goto err;
-
-		if ('0' <= c && c <= '9') {
-			val *= 10;
-			val += c - '0';
-		} else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-			if (*s == '.' || *s == '/') // Two consecutive dots
-				goto err;
-			ip <<= 8;
-			ip += val;
-			i4++;
-			val = 0;
-		} else {
-			goto err;
-		}
-	}
-
-	if (i4 == 3 && val <= 255) {
-		ip <<= 8;
-		ip += val;
-	} else if (i4 == 4 && val <= 32) {
-		/* val is actually no. of bits of subnet mask */
-		mask = val;
-	} else {
-		goto err;
-	}
-
-	if (ipaddr)
-		*ipaddr = ip;
-
-	if (prefix)
-		*prefix = mask;
-
-	return 0;
-err:
-	return EINVAL;
-}
-#endif
-
 void print_ipv4(uint32_t ip, int prefix) {
   printf("%d.%d.%d.%d", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff,
          ip & 0xff);
