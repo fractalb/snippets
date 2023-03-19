@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -206,10 +207,11 @@ err:
         return str;
 }
 
-int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix)
+static const char *parse_ipv4(const char *str, int64_t *ipaddr)
 {
+        *ipaddr = -1;
         unsigned quad1, quad2, quad3, quad4;
-        const char *remainder = ipquad;
+        const char *remainder = str;
         int subnet_mask = 32;
         int value;
         remainder = parse_quad(remainder, &value);
@@ -228,15 +230,29 @@ int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix)
         if (value < 0 || value > 255)
                 goto err;
         quad4 = value;
-        if (*remainder == '/') {
-                remainder = parse_quad(++remainder, &subnet_mask);
-        }
-        if (*remainder != '\0' || subnet_mask < 0 || subnet_mask > 32)
+        *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
+err:
+        return remainder;
+}
+
+int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix)
+{
+        const char *remainder = ipquad;
+        int64_t value;
+        remainder = parse_ipv4(remainder, &value);
+        if (value < 0 || value > UINT_MAX)
                 goto err;
-        if (ipaddr)
-                *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
-        if (prefix)
-                *prefix = subnet_mask;
+        *ipaddr = (uint32_t)value;
+        if (prefix) {
+                int subnet_mask = 32;
+		if (*remainder == '/') {
+			remainder = parse_quad(++remainder, &subnet_mask);
+			if (subnet_mask < 0 || subnet_mask > 32)
+				goto err;
+		}
+		*prefix = subnet_mask;
+        }
+        if (*remainder != '\0') goto err;
         return 0;
 err:
         return -1;
@@ -354,8 +370,10 @@ typedef enum { IPv4, IPv6, UNKNOWN_TEST } TEST_NAME;
 
 result_t run_test(TEST_NAME t, const void *test_args)
 {
+	uint32_t ipaddr;
+	int prefix;
 	if (t == IPv4) {
-		if (str2ipv4((const char *)test_args, NULL, NULL) == 0)
+		if (str2ipv4((const char *)test_args, &ipaddr, &prefix) == 0)
 			return VALID;
 		else
 			return INVALID;
