@@ -23,12 +23,12 @@ char *u32_ip_as_string(uint32_t ip) {
 
 /** This function doesn't do full validation of
  * the `ipstr` string. For example the below
- * ip address strings are accepted.
+ * ip-addresses strings are all accepted as 0x1020304.
  *
  * 1.  "01.2.3.4"
  * 2.  "+1.2.3.4"
- * 3.  "1. 2 . 3. 4"
- * 4.  "1.-2.3.4"
+ * 3.  "1. 2. 3. 4"
+ * 4.  "1.+2.3.4"
  */
 int64_t ip_quad_to_u32(const char *ipstr) {
   uint32_t q[4];
