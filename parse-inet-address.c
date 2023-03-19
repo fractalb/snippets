@@ -1,5 +1,4 @@
 
-#include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -161,7 +160,7 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
 
   return 0;
 err:
-  return EINVAL;
+  return -1;
 }
 
 static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
@@ -189,7 +188,6 @@ static inline const char *parse_quad(const char *str, int *value) {
   for (; i < 3 && is_ascii_digit(*str); i++, str++) {
     val *= 10;
     val += *str - '0';
-    continue;
   }
   // Reject no digit characters case
   if (i == 0)
