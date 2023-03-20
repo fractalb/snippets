@@ -171,11 +171,11 @@ static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
  * `value` will be set to -1 if there are zero
  * digits or more than 3 digits.
  *
- *   ┌─► str argument
- *   │┌───┐
- *   └─192│.168.2.1"
- *    └───┘│
- *         └─► str returned
+ *    ┌─► str argument
+ *    │┌───┐
+ *   "└─192│.168.2.1"
+ *     └───┘│
+ *          └─► str returned
  */
 static inline const char *parse_quad(const char *str, int *value) {
   *value = -1;
