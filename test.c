@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 static const char *skip_spaces(const char *str) {
   while (*str && (*str == ' ' || *str == '\t'))
@@ -9,9 +9,7 @@ static const char *skip_spaces(const char *str) {
   return str;
 }
 
-static inline bool is_ascii_digit(int x) {
-  return x >= '0' && x <= '9';
-}
+static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
 
 // Parse atmost 3 digits in an ip address. "192.168.4.5"
 static inline const char *parse_quad(const char *str, int *value) {
@@ -63,7 +61,8 @@ err:
   return remainder;
 }
 
-int fp_utils_parse_ip4_str(const char *ipstr, uint32_t *startp, uint32_t *endp) {
+int fp_utils_parse_ip4_str(const char *ipstr, uint32_t *startp,
+                           uint32_t *endp) {
   const char *remainder;
   int64_t value;
   remainder = skip_spaces(ipstr);
@@ -79,7 +78,7 @@ int fp_utils_parse_ip4_str(const char *ipstr, uint32_t *startp, uint32_t *endp) 
     *endp = *startp | (1U << (32 - mask)) - 1;
   } else {
     remainder = skip_spaces(remainder);
-    if (*remainder == '-') { //Maybe, a range
+    if (*remainder == '-') { // Maybe, a range
       remainder = skip_spaces(++remainder);
       remainder = parse_ipv4(remainder, &value);
       if (value < 0 || value > UINT_MAX)
@@ -96,12 +95,19 @@ err:
   return -1;
 }
 
-#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 int main() {
-  const char* ipstr[] = { "192.168.2.3", "0.1.2.3", " 0.1.2.032 ", " 0.1.2.320 ", " 00.1.2.32 ", "192.168.3.4/30", "192.168.3.6  - 	192.168.4.6" };
+  const char *ipstr[] = {"192.168.2.3",
+                         "0.1.2.3",
+                         " 0.1.2.032 ",
+                         " 0.1.2.320 ",
+                         " 00.1.2.32 ",
+                         "192.168.3.4/30",
+                         "192.168.3.6  - 	192.168.4.6"};
   uint32_t startp, endp;
-  for (int i=0; i<ARRAY_SIZE(ipstr); i++) {
+  for (int i = 0; i < ARRAY_SIZE(ipstr); i++) {
     int ret = fp_utils_parse_ip4_str(ipstr[i], &startp, &endp);
-    printf("ret=%d input=%s startp=%#x endp=%#x\n", ret, ipstr[i], startp, endp);
+    printf("ret=%d input=%s startp=%#x endp=%#x\n", ret, ipstr[i], startp,
+           endp);
   }
 }
