@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Prints a given buf in hex to a given buffer, along with a NUL terminating
@@ -129,6 +130,7 @@ int hex_dump(char *hexbuf, int hbsize, char *buf, int size) {
   return rc;
 }
 
+#ifdef DEBUG_TEST
 int main() {
   char *str;
   char pc[80];
@@ -149,3 +151,18 @@ int main() {
   }
   printf("\n");
 }
+#else
+int main() {
+  size_t buf_len = 4000;
+  char *buf = malloc(buf_len);
+  size_t hexbuf_len = 20000 + 1; // 5 times input
+  char *hexbuf = malloc(hexbuf_len);
+  while (!feof(stdin)) {
+    size_t size = fread(buf, 1, buf_len, stdin);
+    int rc = hex_dump(hexbuf, hexbuf_len, buf, size);
+    if (rc > 0)
+      printf("%s\n", hexbuf);
+  }
+  return 0;
+}
+#endif
