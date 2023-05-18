@@ -250,13 +250,13 @@ err:
   return -1;
 }
 
-void print_ipv4(uint32_t ip, int prefix) {
-  printf("%d.%d.%d.%d", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff,
-         ip & 0xff);
-  if (prefix < 0)
-    putchar('\n');
-  else
-    printf("/%d\n", prefix);
+#define Q1(x) (((x) >> 24) & 0xff)
+#define Q2(x) (((x) >> 16) & 0xff)
+#define Q3(x) (((x) >>  8) & 0xff)
+#define Q4(x) (((x) >>  0) & 0xff)
+
+void print_ipv4(uint32_t ip, int mask) {
+  printf("%d.%d.%d.%d/%d\n", Q1(ip), Q2(ip), Q3(ip),Q4(ip), mask);
   return;
 }
 
