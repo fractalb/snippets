@@ -15,8 +15,7 @@ void u32_to_ip_quad(uint32_t ip, char str[16]) {
 
 char *u32_ip_as_string(uint32_t ip) {
   char *ipstr = malloc(16);
-  if (!ipstr)
-    return NULL;
+  if (!ipstr) return NULL;
   u32_to_ip_quad(ip, ipstr);
   return ipstr;
 }
@@ -34,22 +33,17 @@ int64_t ip_quad_to_u32(const char *ipstr) {
   uint32_t q[4];
   uint32_t ip;
   int i;
-  if (!ipstr)
-    return -1;
+  if (!ipstr) return -1;
   i = sscanf(ipstr, "%u.%u.%u.%u", &q[3], &q[2], &q[1], &q[0]);
-  if (i != 4)
-    return -1;
-  if (q[3] > 255 || q[2] > 255 || q[1] > 255 || q[0] > 255)
-    return -1;
+  if (i != 4) return -1;
+  if (q[3] > 255 || q[2] > 255 || q[1] > 255 || q[0] > 255) return -1;
   ip = (q[3] << 24) | (q[2] << 16) | (q[1] << 8) | q[0];
   return ip;
 }
 
 static char hex(int i) {
-  if (i >= 0 && i <= 9)
-    return '0' + i;
-  if (i >= 10 && i <= 15)
-    return 'a' + i - 10;
+  if (i >= 0 && i <= 9) return '0' + i;
+  if (i >= 10 && i <= 15) return 'a' + i - 10;
   return 0;
 }
 
@@ -58,8 +52,7 @@ static char hex(int i) {
  * i.e. 3*size */
 static void hex_str(char buf[], int size, char *str) {
   int j = 0;
-  if (size < 1)
-    return;
+  if (size < 1) return;
 
   str[j++] = hex((buf[0] & 0xf0) >> 4);
   str[j++] = hex(buf[0] & 0xf);

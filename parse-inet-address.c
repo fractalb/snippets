@@ -32,8 +32,7 @@ static int hex2base10(uint16_t val) {
 
   for (int i = 3; i >= 0; i--) {
     decimal_digit = (val >> (i * 4)) & 0xf;
-    if (decimal_digit > 9)
-      return -1;
+    if (decimal_digit > 9) return -1;
     base10_val *= 10;
     base10_val += decimal_digit;
   }
@@ -56,12 +55,10 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
   char c;
   char buf2[16];
 
-  if (buf == NULL)
-    buf = buf2;
+  if (buf == NULL) buf = buf2;
 
   while ((c = *s++) != '\0') {
-    if (val > 65535)
-      goto err;
+    if (val > 65535) goto err;
 
     if ('0' <= c && c <= '9') {
       val *= 16;
@@ -78,8 +75,7 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
         buf[i6++] = val & 0xff;
         val = 0;
         if (*s == ':') {
-          if (i6 == 14 || i_dc != 0)
-            goto err;
+          if (i6 == 14 || i_dc != 0) goto err;
           i_dc = i6;
           buf[i6++] = 0;
           buf[i6++] = 0;
@@ -105,25 +101,22 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
   }
 
   if (!i_dc) {
-    if ((px < 0 && i6 != 14) || (px >= 0 && i6 != 16))
-      goto err;
+    if ((px < 0 && i6 != 14) || (px >= 0 && i6 != 16)) goto err;
   }
 
   if (px >= 0 || i4 == 0) {
     val = hex2base10(val);
-    if (val < 0)
-      goto err;
+    if (val < 0) goto err;
   }
 
   for (s--; (c = *s++) != '\0';) {
-    if (val > 255)
-      goto err;
+    if (val > 255) goto err;
 
     if ('0' <= c && c <= '9') {
       val *= 10;
       val += c - '0';
     } else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-      if (*s == '.' || *s == '/') // Two consecutive dots
+      if (*s == '.' || *s == '/')  // Two consecutive dots
         goto err;
       buf[i6++] = val;
       i4++;
@@ -155,8 +148,7 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
   memmove(&buf[i_dc + nz], &buf[i_dc], i6 - i_dc);
   memset(&buf[i_dc], 0, nz);
 
-  if (px >= 0 && prefix)
-    *prefix = px;
+  if (px >= 0 && prefix) *prefix = px;
 
   return 0;
 err:
@@ -181,8 +173,7 @@ static inline const char *parse_quad(const char *str, int *value) {
   *value = -1;
   // Make sure, no left padding of zeroes.
   // Rejects 00, 01, 001, but accepts 0.
-  if (*str == '0' && is_ascii_digit(*(str + 1)))
-    goto err;
+  if (*str == '0' && is_ascii_digit(*(str + 1))) goto err;
   int val = 0;
   int i = 0;
   for (; i < 3 && is_ascii_digit(*str); i++, str++) {
@@ -190,11 +181,9 @@ static inline const char *parse_quad(const char *str, int *value) {
     val += *str - '0';
   }
   // Reject no digit characters case
-  if (i == 0)
-    goto err;
+  if (i == 0) goto err;
   // Reject more than 3 digit characters
-  if (i == 3 && is_ascii_digit(*str))
-    goto err;
+  if (i == 3 && is_ascii_digit(*str)) goto err;
   *value = val;
 err:
   return str;
@@ -206,20 +195,16 @@ static const char *parse_ipv4(const char *str, int64_t *ipaddr) {
   const char *remainder = str;
   int value;
   remainder = parse_quad(remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad1 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad2 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad3 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255)
-    goto err;
+  if (value < 0 || value > 255) goto err;
   quad4 = value;
   *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
 err:
@@ -230,20 +215,17 @@ int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix) {
   const char *remainder = ipquad;
   int64_t value;
   remainder = parse_ipv4(remainder, &value);
-  if (value < 0 || value > UINT_MAX)
-    goto err;
+  if (value < 0 || value > UINT_MAX) goto err;
   *ipaddr = (uint32_t)value;
   if (prefix) {
     int subnet_mask = 32;
     if (*remainder == '/') {
       remainder = parse_quad(++remainder, &subnet_mask);
-      if (subnet_mask < 0 || subnet_mask > 32)
-        goto err;
+      if (subnet_mask < 0 || subnet_mask > 32) goto err;
     }
     *prefix = subnet_mask;
   }
-  if (*remainder != '\0')
-    goto err;
+  if (*remainder != '\0') goto err;
   return 0;
 err:
   return -1;
@@ -251,11 +233,11 @@ err:
 
 #define Q1(x) (((x) >> 24) & 0xff)
 #define Q2(x) (((x) >> 16) & 0xff)
-#define Q3(x) (((x) >>  8) & 0xff)
-#define Q4(x) (((x) >>  0) & 0xff)
+#define Q3(x) (((x) >> 8) & 0xff)
+#define Q4(x) (((x) >> 0) & 0xff)
 
 void print_ipv4(uint32_t ip, int mask) {
-  printf("%d.%d.%d.%d/%d\n", Q1(ip), Q2(ip), Q3(ip),Q4(ip), mask);
+  printf("%d.%d.%d.%d/%d\n", Q1(ip), Q2(ip), Q3(ip), Q4(ip), mask);
   return;
 }
 
@@ -267,8 +249,7 @@ void print_ipv6(unsigned char buf[16], int prefix) {
            buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
            buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15],
            prefix);
-  if (prefix < 0)
-    b[39] = '\0';
+  if (prefix < 0) b[39] = '\0';
   printf("%s\n", b);
   return;
 }
@@ -281,15 +262,15 @@ typedef enum {
 const char *result_str(result_t t) {
   const char *s = NULL;
   switch (t) {
-  case VALID:
-    s = "VALID";
-    break;
-  case INVALID:
-    s = "INVALID";
-    break;
-  default:
-    s = "UNKNOWN";
-    break;
+    case VALID:
+      s = "VALID";
+      break;
+    case INVALID:
+      s = "INVALID";
+      break;
+    default:
+      s = "UNKNOWN";
+      break;
   }
 
   return s;

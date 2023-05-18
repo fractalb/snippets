@@ -39,12 +39,10 @@ static inline bool starts_with(const char *prefix, const char *str) {
 
 char *parse_key_value_from_line(char *line, ssize_t len, const char *key,
                                 const struct parse_ctx *pctx) {
-  if (pctx == NULL)
-    pctx = &PCTX;
+  if (pctx == NULL) pctx = &PCTX;
 
   ssize_t _len = strspn(line, pctx->white_space);
-  if (_len + 1 >= len)
-    return NULL; // Full line is whitespace. return.
+  if (_len + 1 >= len) return NULL;  // Full line is whitespace. return.
   if (have_comments(pctx) && starts_with(pctx->comment_prefix, line + _len)) {
     // printf("Skip Comment.\n");
     return NULL;
@@ -52,26 +50,19 @@ char *parse_key_value_from_line(char *line, ssize_t len, const char *key,
 
   char *next = line + _len;
   char *s = strsep(&next, pctx->key_val_separator);
-  if (s == NULL || next == NULL)
-    return NULL;
+  if (s == NULL || next == NULL) return NULL;
   s += strspn(s, pctx->white_space);
   ssize_t l2 = strcspn(s, pctx->white_space);
-  if (strncmp(key, s, l2) != 0)
-    return NULL;
-  if (strspn(s + l2, pctx->white_space) != strlen(s + l2))
-    return NULL;
+  if (strncmp(key, s, l2) != 0) return NULL;
+  if (strspn(s + l2, pctx->white_space) != strlen(s + l2)) return NULL;
 
   /* The value is assumed to be wrapped in a pair of single quotes */
   char *s1 = strsep(&next, pctx->value_wrapper);
-  if (s1 == NULL || next == NULL)
-    return NULL;
-  if (strspn(s1, pctx->white_space) != strlen(s1))
-    return NULL;
+  if (s1 == NULL || next == NULL) return NULL;
+  if (strspn(s1, pctx->white_space) != strlen(s1)) return NULL;
   char *s2 = strsep(&next, pctx->value_wrapper);
-  if (s2 == NULL || next == NULL)
-    return NULL;
-  if (strspn(next, pctx->white_space) + 1 /*\n*/ != strlen(next))
-    return NULL;
+  if (s2 == NULL || next == NULL) return NULL;
+  if (strspn(next, pctx->white_space) + 1 /*\n*/ != strlen(next)) return NULL;
   return s2;
 }
 
@@ -91,11 +82,9 @@ int parse_key_value_from_file(const char *file, const char *key,
   }
 
   while ((nread = getline(&line, &len, stream)) != -1) {
-    if (len <= 2)
-      continue;
+    if (len <= 2) continue;
     const char *_value = parse_key_value_from_line(line, len, key, pctx);
-    if (_value == NULL)
-      continue;
+    if (_value == NULL) continue;
     if (strlcpy(value, _value, MAX_VALUE_SIZE) > MAX_VALUE_SIZE)
       fprintf(stderr, "The value of \"%s\" truncated!\n", key);
     err = 0;

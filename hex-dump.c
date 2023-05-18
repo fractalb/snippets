@@ -11,10 +11,8 @@
  */
 
 static inline char hex(char c) {
-  if (c >= 0 && c <= 9)
-    return '0' + c;
-  if (c >= 10 && c <= 15)
-    return 'a' + c - 10;
+  if (c >= 0 && c <= 9) return '0' + c;
+  if (c >= 10 && c <= 15) return 'a' + c - 10;
   assert(0);
   return 0;
 }
@@ -31,12 +29,11 @@ static inline int conv_16bytes(char *hexbuf, char *buf, int offset) {
   char str[16];
 
   j = sprintf(hexbuf, "0x%.8x : ", offset);
-  assert(j == 13); // assuming 64 bit pointer addresses
+  assert(j == 13);  // assuming 64 bit pointer addresses
   for (i = 0; i < 16; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
     hexbuf[j++] = hex(buf[i] & 0xf);
-    if ((i & 0x1) == 0x1)
-      hexbuf[j++] = ' ';
+    if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
     str[i] = isprint(buf[i]) ? buf[i] : '.';
   }
   memcpy(&hexbuf[j], str, 16);
@@ -53,16 +50,14 @@ static inline int conv_nbytes(char *hexbuf, char *buf, int size, int offset) {
   assert(size < 16);
 
   j = sprintf(hexbuf, "0x%.8x : ", offset);
-  assert(j == 13); // assuming 64 bit pointer addresses
+  assert(j == 13);  // assuming 64 bit pointer addresses
   for (i = 0; i < size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
     hexbuf[j++] = hex(buf[i] & 0xf);
-    if ((i & 0x1) == 0x1)
-      hexbuf[j++] = ' ';
+    if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
     str[i] = isprint(buf[i]) ? buf[i] : '.';
   }
-  while (j < 53)
-    hexbuf[j++] = ' ';
+  while (j < 53) hexbuf[j++] = ' ';
   memcpy(&hexbuf[j], str, size);
   j += size;
   hexbuf[j++] = '\n';
@@ -76,12 +71,11 @@ static inline int conv_nbytes_2(char *hexbuf, char *buf, int size, int offset) {
   assert(size < 16);
 
   j = sprintf(hexbuf, "0x%.8x : ", offset);
-  assert(j == 21); // assuming 64 bit pointer addresses
+  assert(j == 21);  // assuming 64 bit pointer addresses
   for (i = 0; i < size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
     hexbuf[j++] = hex(buf[i] & 0xf);
-    if ((i & 0x1) == 0x1)
-      hexbuf[j++] = ' ';
+    if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
   }
   hexbuf[j++] = '\n';
   return j;
@@ -91,8 +85,7 @@ int hex_dump(char *hexbuf, int hbsize, char *buf, int size) {
   int j, rc = 0;
   int offset = 0;
 
-  if (size < 1 || hbsize < 1)
-    return rc;
+  if (size < 1 || hbsize < 1) return rc;
 
   /* 10 byte offset + 16 bytes * 2+1 */
   while (hbsize >= 70 && size >= 16) {
@@ -121,7 +114,7 @@ int hex_dump(char *hexbuf, int hbsize, char *buf, int size) {
 
   // Terminate the string properly
   if (hbsize == 0) {
-    hexbuf[-1] = '\0'; // Overwrite the previous char.
+    hexbuf[-1] = '\0';  // Overwrite the previous char.
   } else {
     hexbuf[0] = '\0';
     rc++;
@@ -140,8 +133,7 @@ int main() {
 
   while (true) {
     str = fgets(pc, sizeof(pc), stdin);
-    if (!str)
-      break;
+    if (!str) break;
     len = strlen(str);
     rc = hex_dump(hexbuf, sizeof(hexbuf), str, len);
     if (rc > 0) {
@@ -155,13 +147,12 @@ int main() {
 int main() {
   size_t buf_len = 4000;
   char *buf = malloc(buf_len);
-  size_t hexbuf_len = 20000 + 1; // 5 times input
+  size_t hexbuf_len = 20000 + 1;  // 5 times input
   char *hexbuf = malloc(hexbuf_len);
   while (!feof(stdin)) {
     size_t size = fread(buf, 1, buf_len, stdin);
     int rc = hex_dump(hexbuf, hexbuf_len, buf, size);
-    if (rc > 0)
-      printf("%s\n", hexbuf);
+    if (rc > 0) printf("%s\n", hexbuf);
   }
   return 0;
 }

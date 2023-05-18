@@ -27,8 +27,7 @@ void reverse_words(char *str) {
 
   /* make sure that 'start' points to a
    * non-space character */
-  while (*start == ' ' || *start == '\t')
-    start++;
+  while (*start == ' ' || *start == '\t') start++;
 
   end = start;
   while (*end != '\0') {
@@ -37,8 +36,7 @@ void reverse_words(char *str) {
       reverse_chars(start, end - 1);
       end++;
       /* Skip to next non-space character */
-      while (*end == ' ' || *end == '\t')
-        end++;
+      while (*end == ' ' || *end == '\t') end++;
       start = end;
     }
   }

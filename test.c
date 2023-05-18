@@ -4,8 +4,7 @@
 #include <stdio.h>
 
 static const char *skip_spaces(const char *str) {
-  while (*str && (*str == ' ' || *str == '\t'))
-    str++;
+  while (*str && (*str == ' ' || *str == '\t')) str++;
   return str;
 }
 
@@ -16,8 +15,7 @@ static inline const char *parse_quad(const char *str, int *value) {
   *value = -1;
   // Make sure, no left padding of zeroes.
   // Rejects 00, 01, 001, but accepts 0.
-  if (*str == '0' && is_ascii_digit(*(str + 1)))
-    goto err;
+  if (*str == '0' && is_ascii_digit(*(str + 1))) goto err;
   int val = 0;
   int i = 0;
   for (; i < 3 && is_ascii_digit(*str); i++, str++) {
@@ -25,11 +23,9 @@ static inline const char *parse_quad(const char *str, int *value) {
     val += *str - '0';
   }
   // Reject no digit characters case
-  if (i == 0)
-    goto err;
+  if (i == 0) goto err;
   // Reject more than 3 digit characters
-  if (i == 3 && is_ascii_digit(*str))
-    goto err;
+  if (i == 3 && is_ascii_digit(*str)) goto err;
   *value = val;
 err:
   return str;
@@ -41,48 +37,40 @@ static const char *parse_ipv4(const char *str, int64_t *ipaddr) {
   const char *remainder = str;
   int value;
   remainder = parse_quad(remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad1 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad2 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255 || *remainder != '.')
-    goto err;
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
   quad3 = value;
   remainder = parse_quad(++remainder, &value);
-  if (value < 0 || value > 255)
-    goto err;
+  if (value < 0 || value > 255) goto err;
   quad4 = value;
   *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
 err:
   return remainder;
 }
 
-int util_parse_ip4_str(const char *ipstr, uint32_t *startp,
-                           uint32_t *endp) {
+int util_parse_ip4_str(const char *ipstr, uint32_t *startp, uint32_t *endp) {
   const char *remainder;
   int64_t value;
   remainder = skip_spaces(ipstr);
   remainder = parse_ipv4(remainder, &value);
-  if (value < 0 || value > UINT_MAX)
-    goto err;
+  if (value < 0 || value > UINT_MAX) goto err;
   *startp = (uint32_t)value;
-  if (*remainder == '/') { // Subnet
+  if (*remainder == '/') {  // Subnet
     int mask;
     remainder = parse_quad(++remainder, &mask);
-    if (mask < 0 || mask > 32)
-      goto err;
+    if (mask < 0 || mask > 32) goto err;
     *endp = *startp | (1U << (32 - mask)) - 1;
   } else {
     remainder = skip_spaces(remainder);
-    if (*remainder == '-') { // Maybe, a range
+    if (*remainder == '-') {  // Maybe, a range
       remainder = skip_spaces(++remainder);
       remainder = parse_ipv4(remainder, &value);
-      if (value < 0 || value > UINT_MAX)
-        goto err;
+      if (value < 0 || value > UINT_MAX) goto err;
       *endp = (uint32_t)value;
     }
   }

@@ -22,14 +22,12 @@ static inline unsigned char int_val(char hex) {
 size_t decode_hex_to_binary(const char *hex, size_t hexlen, char *bin,
                             size_t binlen, int *error) {
   *error = -1;
-  if (hexlen == 0 || binlen == 0)
-    return 0;
+  if (hexlen == 0 || binlen == 0) return 0;
   size_t buflen = (hexlen + 1) / 2;
-  if (binlen < buflen)
-    buflen = binlen;
+  if (binlen < buflen) buflen = binlen;
 
-  size_t i = 0; // hex buffer
-  size_t j = 0; // bin buffer
+  size_t i = 0;  // hex buffer
+  size_t j = 0;  // bin buffer
   if (hexlen % 2 != 0) {
     unsigned char b = int_val(hex[i++]);
     if (b == 0xff) {

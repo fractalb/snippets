@@ -7,12 +7,12 @@ extern "C" {
 }
 
 class Buffer {
-private:
+ private:
   char *buf;
   size_t size;
   static const size_t init_size;
 
-public:
+ public:
   Buffer();
   Buffer(size_t size);
   ~Buffer();
@@ -41,16 +41,14 @@ Buffer::~Buffer() {
 
 void Buffer::resizeBuf(size_t newSize) {
   char *buf2 = (char *)malloc(newSize);
-  if (buf2 == nullptr)
-    throw std::bad_alloc();
+  if (buf2 == nullptr) throw std::bad_alloc();
   free(buf);
   buf = buf2;
   size = newSize;
 }
 
 void Buffer::ensureBufSize(size_t size) {
-  if (size <= this->size)
-    return;
+  if (size <= this->size) return;
 
   resizeBuf(size);
 }
