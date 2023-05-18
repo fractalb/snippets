@@ -61,7 +61,7 @@ err:
   return remainder;
 }
 
-int fp_utils_parse_ip4_str(const char *ipstr, uint32_t *startp,
+int util_parse_ip4_str(const char *ipstr, uint32_t *startp,
                            uint32_t *endp) {
   const char *remainder;
   int64_t value;
@@ -103,10 +103,11 @@ int main() {
                          " 0.1.2.320 ",
                          " 00.1.2.32 ",
                          "192.168.3.4/30",
-                         "192.168.3.6  - 	192.168.4.6"};
+                         "192.168.3.6  - 	192.168.4.6",
+                         "192.168.3.6  - 	192.168.4.7"};
   uint32_t startp, endp;
   for (int i = 0; i < ARRAY_SIZE(ipstr); i++) {
-    int ret = fp_utils_parse_ip4_str(ipstr[i], &startp, &endp);
+    int ret = util_parse_ip4_str(ipstr[i], &startp, &endp);
     printf("ret=%d input=%s startp=%#x endp=%#x\n", ret, ipstr[i], startp,
            endp);
   }
