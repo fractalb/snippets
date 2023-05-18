@@ -1,0 +1,12 @@
+
+# Object files
+*.o
+# libraries
+*.a
+*.so
+
+hex2binary-cmd
+hex2binary-test
+hex-dump
+parse-inet-address
+test
