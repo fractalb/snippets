@@ -105,7 +105,7 @@ int str2ipv6(const char *str, char buf[16], int *prefix) {
   }
 
   if (!i_dc) {
-    if (px < 0 && i6 != 14 || px >= 0 && i6 != 16)
+    if ((px < 0 && i6 != 14) || (px >= 0 && i6 != 16))
       goto err;
   }
 
@@ -204,7 +204,6 @@ static const char *parse_ipv4(const char *str, int64_t *ipaddr) {
   *ipaddr = -1;
   unsigned quad1, quad2, quad3, quad4;
   const char *remainder = str;
-  int subnet_mask = 32;
   int value;
   remainder = parse_quad(remainder, &value);
   if (value < 0 || value > 255 || *remainder != '.')
@@ -319,6 +318,7 @@ result_t run_test(TEST_NAME t, const void *test_args) {
     else
       return INVALID;
   }
+  return INVALID;
 }
 
 int main() {

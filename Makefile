@@ -1,5 +1,6 @@
 
-CFLAGS := -std=c11 -Wall -Wextra
+CFLAGS := -std=c11 -Wall -Wextra -fsanitize=undefined
+CXXFLAGS := -std=c++17 -Wall -Wextra -fsanitize=undefined
 
 PROGS := hex2binary-test hex2binary-cmd hex-dump parse-inet-address
 
@@ -9,10 +10,10 @@ hex-dump: hex-dump.c
 	$(CC) $(CFLAGS) $< -o $@
 
 hex2binary-test: hex2binary.c unittest_hex2binary.cc
-	g++ -std=c++17 -Wall unittest_hex2binary.cc -lgtest -lgtest_main -lpthread -o $@
+	$(CXX) $(CXXFLAGS) unittest_hex2binary.cc -lgtest -lgtest_main -lpthread -o $@
 
 hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
-	g++ -std=c++17 -Wall -Wextra $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@
 
 parse-inet-address: parse-inet-address.c
 	$(CC) $(CFLAGS) $< -o $@
