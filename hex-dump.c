@@ -45,69 +45,69 @@ static inline int conv_16bytes(char *hexbuf, char *buf, uint32_t *offset) {
   return j;
 }
 
-static inline int conv_nbytes(char *hexbuf, char *buf, int size,
+static inline int conv_nbytes(char *hexbuf, char *buf, int buf_size,
                               uint32_t *offset) {
   int i, j;
   char str[16];
 
-  assert(size < 16);
+  assert(buf_size < 16);
 
   j = sprintf(hexbuf, "0x%.8x : ", *offset);
   assert(j == 13);  // assuming 64 bit pointer addresses
-  for (i = 0; i < size; i++) {
+  for (i = 0; i < buf_size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
     hexbuf[j++] = hex(buf[i] & 0xf);
     if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
     str[i] = isprint(buf[i]) ? buf[i] : '.';
   }
   while (j < 53) hexbuf[j++] = ' ';
-  memcpy(&hexbuf[j], str, size);
-  j += size;
+  memcpy(&hexbuf[j], str, buf_size);
+  j += buf_size;
   hexbuf[j++] = '\n';
-  assert(j + 16 - size == 70);
-  *offset += size;
+  assert(j + 16 - buf_size == 70);
+  *offset += buf_size;
   return j;
 }
 
-static inline int conv_nbytes_2(char *hexbuf, char *buf, int size,
+static inline int conv_nbytes_2(char *hexbuf, char *buf, int buf_size,
                                 uint32_t *offset) {
   int i, j;
 
-  assert(size < 16);
+  assert(buf_size < 16);
 
   j = sprintf(hexbuf, "0x%.8x : ", *offset);
   assert(j == 21);  // assuming 64 bit pointer addresses
-  for (i = 0; i < size; i++) {
+  for (i = 0; i < buf_size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
     hexbuf[j++] = hex(buf[i] & 0xf);
     if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
   }
   hexbuf[j++] = '\n';
-  *offset += size;
+  *offset += buf_size;
   return j;
 }
 
-int hex_dump(char *hexbuf, int hexbuf_size, char *buf, int size, uint32_t *offset) {
+int hex_dump(char *hexbuf, int hexbuf_size, char *buf, int buf_size, uint32_t *offset) {
   int j, rc = 0;
 
-  if (size < 1 || hexbuf_size < 1) return rc;
+  if (buf_size < 1 || hexbuf_size < 1) return rc;
 
   /* 10 byte offset + 16 bytes * 2+1 */
-  while (hexbuf_size >= 70 && size >= 16) {
+  while (hexbuf_size >= 70 && buf_size >= 16) {
     j = conv_16bytes(hexbuf, buf, offset);
     assert(j == 70);
     rc += j;
     hexbuf += j;
     hexbuf_size -= j;
     buf += 16;
-    size -= 16;
+    buf_size -= 16;
   }
 
-  if (size > 0) {
+  if (buf_size > 0) {
     if (hexbuf_size >= 70)
-      j = conv_nbytes(hexbuf, buf, size, offset);
-    else if (hexbuf_size > 13 + (size + 1) / 2 * 5)
-      j = conv_nbytes_2(hexbuf, buf, size, offset);
+      j = conv_nbytes(hexbuf, buf, buf_size, offset);
+    else if (hexbuf_size > 13 + (buf_size + 1) / 2 * 5)
+      j = conv_nbytes_2(hexbuf, buf, buf_size, offset);
     else if (hexbuf_size > 13)
       j = sprintf(hexbuf, "0x%.8x : ", *offset);
 
