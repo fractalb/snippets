@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,11 +25,11 @@ static inline char hex(char c) {
  * `hexbuf` has atleast 70 bytes space.
  * NOTE: No NUL character appended at the end
  */
-static inline int conv_16bytes(char *hexbuf, char *buf, int offset) {
+static inline int conv_16bytes(char *hexbuf, char *buf, uint32_t *offset) {
   int i, j;
   char str[16];
 
-  j = sprintf(hexbuf, "0x%.8x : ", offset);
+  j = sprintf(hexbuf, "0x%.8x : ", *offset);
   assert(j == 13);  // assuming 64 bit pointer addresses
   for (i = 0; i < 16; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
@@ -40,16 +41,18 @@ static inline int conv_16bytes(char *hexbuf, char *buf, int offset) {
   j += 16;
   hexbuf[j++] = '\n';
   assert(j == 70);
+  *offset += 16;
   return j;
 }
 
-static inline int conv_nbytes(char *hexbuf, char *buf, int size, int offset) {
+static inline int conv_nbytes(char *hexbuf, char *buf, int size,
+                              uint32_t *offset) {
   int i, j;
   char str[16];
 
   assert(size < 16);
 
-  j = sprintf(hexbuf, "0x%.8x : ", offset);
+  j = sprintf(hexbuf, "0x%.8x : ", *offset);
   assert(j == 13);  // assuming 64 bit pointer addresses
   for (i = 0; i < size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
@@ -62,15 +65,17 @@ static inline int conv_nbytes(char *hexbuf, char *buf, int size, int offset) {
   j += size;
   hexbuf[j++] = '\n';
   assert(j + 16 - size == 70);
+  *offset += size;
   return j;
 }
 
-static inline int conv_nbytes_2(char *hexbuf, char *buf, int size, int offset) {
+static inline int conv_nbytes_2(char *hexbuf, char *buf, int size,
+                                uint32_t *offset) {
   int i, j;
 
   assert(size < 16);
 
-  j = sprintf(hexbuf, "0x%.8x : ", offset);
+  j = sprintf(hexbuf, "0x%.8x : ", *offset);
   assert(j == 21);  // assuming 64 bit pointer addresses
   for (i = 0; i < size; i++) {
     hexbuf[j++] = hex((buf[i] & 0xf0) >> 4);
@@ -78,19 +83,18 @@ static inline int conv_nbytes_2(char *hexbuf, char *buf, int size, int offset) {
     if ((i & 0x1) == 0x1) hexbuf[j++] = ' ';
   }
   hexbuf[j++] = '\n';
+  *offset += size;
   return j;
 }
 
-int hex_dump(char *hexbuf, int hbsize, char *buf, int size) {
+int hex_dump(char *hexbuf, int hbsize, char *buf, int size, uint32_t *offset) {
   int j, rc = 0;
-  int offset = 0;
 
   if (size < 1 || hbsize < 1) return rc;
 
   /* 10 byte offset + 16 bytes * 2+1 */
   while (hbsize >= 70 && size >= 16) {
     j = conv_16bytes(hexbuf, buf, offset);
-    offset += 16;
     assert(j == 70);
     rc += j;
     hexbuf += j;
@@ -105,7 +109,7 @@ int hex_dump(char *hexbuf, int hbsize, char *buf, int size) {
     else if (hbsize > 13 + (size + 1) / 2 * 5)
       j = conv_nbytes_2(hexbuf, buf, size, offset);
     else if (hbsize > 13)
-      j = sprintf(hexbuf, "0x%.8x : ", offset);
+      j = sprintf(hexbuf, "0x%.8x : ", *offset);
 
     hbsize -= j;
     hexbuf += j;
@@ -149,11 +153,13 @@ int main() {
   char *buf = malloc(buf_len);
   size_t hexbuf_len = 20000 + 1;  // 5 times input
   char *hexbuf = malloc(hexbuf_len);
+  uint32_t offset = 0;
   while (!feof(stdin)) {
     size_t size = fread(buf, 1, buf_len, stdin);
-    int rc = hex_dump(hexbuf, hexbuf_len, buf, size);
-    if (rc > 0) printf("%s\n", hexbuf);
+    int rc = hex_dump(hexbuf, hexbuf_len, buf, size, &offset);
+    if (rc > 0) printf("%s", hexbuf);
   }
+  puts("\n");
   return 0;
 }
 #endif
