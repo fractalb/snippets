@@ -87,37 +87,37 @@ static inline int conv_nbytes_2(char *hexbuf, char *buf, int size,
   return j;
 }
 
-int hex_dump(char *hexbuf, int hbsize, char *buf, int size, uint32_t *offset) {
+int hex_dump(char *hexbuf, int hexbuf_size, char *buf, int size, uint32_t *offset) {
   int j, rc = 0;
 
-  if (size < 1 || hbsize < 1) return rc;
+  if (size < 1 || hexbuf_size < 1) return rc;
 
   /* 10 byte offset + 16 bytes * 2+1 */
-  while (hbsize >= 70 && size >= 16) {
+  while (hexbuf_size >= 70 && size >= 16) {
     j = conv_16bytes(hexbuf, buf, offset);
     assert(j == 70);
     rc += j;
     hexbuf += j;
-    hbsize -= j;
+    hexbuf_size -= j;
     buf += 16;
     size -= 16;
   }
 
   if (size > 0) {
-    if (hbsize >= 70)
+    if (hexbuf_size >= 70)
       j = conv_nbytes(hexbuf, buf, size, offset);
-    else if (hbsize > 13 + (size + 1) / 2 * 5)
+    else if (hexbuf_size > 13 + (size + 1) / 2 * 5)
       j = conv_nbytes_2(hexbuf, buf, size, offset);
-    else if (hbsize > 13)
+    else if (hexbuf_size > 13)
       j = sprintf(hexbuf, "0x%.8x : ", *offset);
 
-    hbsize -= j;
+    hexbuf_size -= j;
     hexbuf += j;
     rc += j;
   }
 
   // Terminate the string properly
-  if (hbsize == 0) {
+  if (hexbuf_size == 0) {
     hexbuf[-1] = '\0';  // Overwrite the previous char.
   } else {
     hexbuf[0] = '\0';
