@@ -6,15 +6,21 @@
 
 #define ARR_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-void u32_to_ip_quad(uint32_t ip, char str[16]) {
+#define Q1(x) (((x) >> 24) & 0xff)
+#define Q2(x) (((x) >> 16) & 0xff)
+#define Q3(x) (((x) >>  8) & 0xff)
+#define Q4(x) (((x) >>  0) & 0xff)
+
+#define IPV4_MAX_STR_SIZE 16
+void u32_to_ip_quad(uint32_t ip, char str[IPV4_MAX_STR_SIZE]) {
   int i;
-  i = sprintf(str, "%u.%u.%u.%u", (ip >> 24) & 0xff, (ip >> 16) & 0xff,
-              (ip >> 8) & 0xff, ip & 0xff);
-  assert(i < 16);
+  i = snprintf(str, IPV4_MAX_STR_SIZE, "%u.%u.%u.%u", Q1(ip), Q2(ip),
+              Q3(ip), Q4(ip));;
+  assert(i < IPV4_MAX_STR_SIZE);
 }
 
 char *u32_ip_as_string(uint32_t ip) {
-  char *ipstr = malloc(16);
+  char *ipstr = malloc(IPV4_MAX_STR_SIZE);
   if (!ipstr) return NULL;
   u32_to_ip_quad(ip, ipstr);
   return ipstr;
@@ -28,6 +34,10 @@ char *u32_ip_as_string(uint32_t ip) {
  * 2.  "+1.2.3.4"
  * 3.  "1. 2. 3. 4"
  * 4.  "1.+2.3.4"
+ *
+ * Note: Use this function only if you know that
+ * `ipstr` is a valid IP address. Use an IPv4
+ * string parser if you don't trust the input.
  */
 int64_t ip_quad_to_u32(const char *ipstr) {
   uint32_t q[4];
@@ -55,7 +65,7 @@ static void hex_str(char buf[], int size, char *str) {
   if (size < 1) return;
 
   str[j++] = hex((buf[0] & 0xf0) >> 4);
-  str[j++] = hex(buf[0] & 0xf);
+  str[j++] = hex( buf[0] & 0x0f);
   for (int i = 1; i < size; i++) {
     str[j++] = ':';
     str[j++] = hex((buf[i] & 0xf0) >> 4);
