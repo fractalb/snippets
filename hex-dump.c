@@ -87,7 +87,8 @@ static inline int conv_nbytes_2(char *hexbuf, char *buf, int buf_size,
   return j;
 }
 
-int hex_dump(char *hexbuf, int hexbuf_size, char *buf, int buf_size, uint32_t *offset) {
+int hex_dump(char *hexbuf, int hexbuf_size, char *buf, int buf_size,
+             uint32_t *offset) {
   int j, rc = 0;
 
   if (buf_size < 1 || hexbuf_size < 1) return rc;
@@ -159,7 +160,9 @@ int main() {
     int rc = hex_dump(hexbuf, hexbuf_len, buf, size, &offset);
     if (rc > 0) printf("%s", hexbuf);
   }
-  puts("\n");
+  printf("0x%.8x :\n", offset);
+  free(buf);
+  free(hexbuf);
   return 0;
 }
 #endif
