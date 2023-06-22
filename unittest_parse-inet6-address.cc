@@ -11,6 +11,7 @@ std::vector<const char*> zeroIp = {
     "::",       "0::",       "00::",       "000::",       "0000::",
     "0:0000::", "00:0000::", "000:0000::", "0000:0000::",
 };
+
 TEST(Ipv6_Parser, ValidZeroAddr) {
   uint16_t hextet[8];
   bool valid;
@@ -19,5 +20,25 @@ TEST(Ipv6_Parser, ValidZeroAddr) {
     EXPECT_TRUE(valid);
     EXPECT_EQ(addr + strlen(addr), ret);
     for (auto a : hextet) EXPECT_EQ(a, 0);
+  }
+}
+
+std::vector<const char*> invalidIps = {
+// ":::", "::::",
+//  ":0:",
+//  "0::0:",
+//  "::0:",
+ ":0::",
+// "0:::", "0::0::", "0:0::0:",
+// "0:0::",
+};
+
+TEST(Ipv6_Parser, InvalidIpAddr) {
+  uint16_t hextet[8];
+  bool valid;
+  for (auto addr : invalidIps) {
+    std::cout << "addr = " << addr << '\n';
+    const char* ret = parse_ipv6(addr, hextet, &valid);
+    EXPECT_FALSE(valid);
   }
 }

@@ -138,12 +138,19 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   // PRINT_PARSE_CTX(ctx);
   if (separator == DOUBLE_COLON) {
     if (ctx->double_colon_index >= 0 || i + 2 >= 8) {
+      ctx->state = INVALID;
       rbuf -= 2;  // Go back to begining of ::
       goto end;
     }
     ctx->double_colon_index = i;
     i += 2;  // Minimum two zero hextets. Be ware it can be more.
   } else {   // SINGLE_COLON
+    if (ctx->current_index == 0) {
+      // Address should not start with a single colon
+      ctx->state = INVALID;
+      rbuf--;
+      goto end;
+    }
     single_colon_parsed = true;
   }
 
@@ -152,8 +159,13 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   rbuf = parse_hextet(rbuf, &hextet_val);
   if (hextet_val == -1) {
     if (single_colon_parsed) {
-      // Should not end with a single colon ':'.
-      ctx->state = INVALID;
+      if (ctx->double_colon_index >= 0) {
+        ctx->state = FINISH;
+        rbuf--; // Valid without the single colon
+      } else {
+        // Should not end with a single colon ':'.
+        ctx->state = INVALID;
+      }
       goto end;
     }
     // Parsed double colon
