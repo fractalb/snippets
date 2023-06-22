@@ -161,7 +161,7 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
     if (single_colon_parsed) {
       if (ctx->double_colon_index >= 0) {
         ctx->state = FINISH;
-        rbuf--; // Valid without the single colon
+        rbuf--;  // Valid without the single colon
       } else {
         // Should not end with a single colon ':'.
         ctx->state = INVALID;
