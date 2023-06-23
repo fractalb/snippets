@@ -1,5 +1,6 @@
 
 #include <gtest/gtest.h>
+#include <arpa/inet.h>
 
 #include <vector>
 
@@ -13,7 +14,7 @@ std::vector<const char*> zeroIp = {
     "0:0:0:0:0:0:0:0",
 };
 
-TEST(Ipv6_Parser, ValidZeroAddr) {
+TEST(Ipv6Parser, ValidZeroAddr) {
   uint16_t hextet[8];
   bool valid;
   for (auto addr : zeroIp) {
@@ -24,27 +25,37 @@ TEST(Ipv6_Parser, ValidZeroAddr) {
   }
 }
 
-std::vector<const char*> invalidIps = {
-    // ":::", "::::",
-    //  ":0:",
-    //  "0::0:",
-    //  "::0:",
-    ":0::",
-    // "0:::", "0::0::", "0:0::0:",
-    // "0:0::",
-};
+// Sample invalid IP's
+// ":::", "::::",
+// ":0:",
+// "0::0:",
+// "::0:",
+// ":0::",
+// "0:00000::",
+// "0:::", "0::0::", "0:0::0:",
+// "0:0::",
 
-TEST(Ipv6_Parser, InvalidIpAddr) {
+TEST(Ipv6Parser, InvalidIpAddr1) {
   uint16_t hextet[8];
   bool valid;
-  for (auto addr : invalidIps) {
-    std::cout << "addr = " << addr << '\n';
-    const char* ret = parse_ipv6(addr, hextet, &valid);
-    EXPECT_FALSE(valid);
-  }
+  const char* addr = ":0::";
+  // std::cout << "addr = " << addr << '\n';
+  const char* ret = parse_ipv6(addr, hextet, &valid);
+  EXPECT_EQ(ret, addr);
+  EXPECT_FALSE(valid);
 }
 
-TEST(Ipv6_parser, ValidInvalid1) {
+TEST(Ipv6Parser, InvalidIpAddr2) {
+  uint16_t hextet[8];
+  bool valid;
+  const char* addr = "0:00000:";
+  // std::cout << "addr = " << addr << '\n';
+  const char* ret = parse_ipv6(addr, hextet, &valid);
+  EXPECT_EQ(ret - 6, addr);
+  EXPECT_FALSE(valid);
+}
+
+TEST(Ipv6Parser, ValidInvalid1) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = ":::";
@@ -54,7 +65,7 @@ TEST(Ipv6_parser, ValidInvalid1) {
   for (auto a : hextet) EXPECT_EQ(a, 0);
 }
 
-TEST(Ipv6_parser, ValidInvalid2) {
+TEST(Ipv6Parser, ValidInvalid2) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::::";
@@ -64,7 +75,7 @@ TEST(Ipv6_parser, ValidInvalid2) {
   for (auto a : hextet) EXPECT_EQ(a, 0);
 }
 
-TEST(Ipv6_parser, ValidInvalid3) {
+TEST(Ipv6Parser, ValidInvalid3) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "0::::";
@@ -74,7 +85,7 @@ TEST(Ipv6_parser, ValidInvalid3) {
   for (auto a : hextet) EXPECT_EQ(a, 0);
 }
 
-TEST(Ipv6_parser, ValidInvalid4) {
+TEST(Ipv6Parser, ValidInvalid4) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "0:0:::";
@@ -84,7 +95,7 @@ TEST(Ipv6_parser, ValidInvalid4) {
   for (auto a : hextet) EXPECT_EQ(a, 0);
 }
 
-TEST(Ipv6_parser, ValidInvalid5) {
+TEST(Ipv6Parser, ValidInvalid5) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::0:";
@@ -94,7 +105,7 @@ TEST(Ipv6_parser, ValidInvalid5) {
   for (auto a : hextet) EXPECT_EQ(a, 0);
 }
 
-TEST(Ipv6_parser, ValidInvalid6) {
+TEST(Ipv6Parser, ValidInvalid6) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::0a:";
@@ -107,7 +118,7 @@ TEST(Ipv6_parser, ValidInvalid6) {
   EXPECT_EQ(hextet[7], 0xa);
 }
 
-TEST(Ipv6_parser, ValidInvalid7) {
+TEST(Ipv6Parser, ValidInvalid7) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::0ab:";
@@ -120,7 +131,7 @@ TEST(Ipv6_parser, ValidInvalid7) {
   EXPECT_EQ(hextet[7], 0xab);
 }
 
-TEST(Ipv6_parser, ValidInvalid8) {
+TEST(Ipv6Parser, ValidInvalid8) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::0abc:";
@@ -133,7 +144,7 @@ TEST(Ipv6_parser, ValidInvalid8) {
   EXPECT_EQ(hextet[7], 0xabc);
 }
 
-TEST(Ipv6_parser, ValidInvalid9) {
+TEST(Ipv6Parser, ValidInvalid9) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "::0abcd:";
@@ -146,7 +157,7 @@ TEST(Ipv6_parser, ValidInvalid9) {
   EXPECT_EQ(hextet[7], 0xabc);
 }
 
-TEST(Ipv6_parser, ValidIps1) {
+TEST(Ipv6Parser, ValidIps1) {
   uint16_t hextet[8];
   bool valid;
   const char* addr = "0a::bcd:";
@@ -158,4 +169,15 @@ TEST(Ipv6_parser, ValidIps1) {
     EXPECT_EQ(hextet[i], 0);
   }
   EXPECT_EQ(hextet[7], 0xbcd);
+}
+
+TEST(InetPtoN, ValidIps1) {
+  uint8_t bytes[16];
+  const char* addr = "0a::00bcd";
+  int ret = inet_pton(AF_INET6, addr, bytes);
+  EXPECT_EQ(ret, 1);
+  EXPECT_EQ(bytes[0], 0);
+  EXPECT_EQ(bytes[1], 0xa);
+  EXPECT_EQ(bytes[14], 0xb);
+  EXPECT_EQ(bytes[15], 0xcd);
 }
