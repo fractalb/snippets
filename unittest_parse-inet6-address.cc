@@ -225,3 +225,48 @@ TEST(InetPtoN, ValidIps1) {
   EXPECT_EQ(bytes[14], 0);
   EXPECT_EQ(bytes[15], 0);
 }
+
+TEST(InetPtoN, ValidIps2) {
+  uint8_t bytes[16];
+  const char* addr = "::192.168.2.3";
+  int ret = inet_pton(AF_INET6, addr, bytes);
+  EXPECT_EQ(ret, 1);
+  for (int i = 0; i < 12; i++) EXPECT_EQ(bytes[i], 0);
+  EXPECT_EQ(bytes[12], 0xc0);
+  EXPECT_EQ(bytes[13], 0xa8);
+  EXPECT_EQ(bytes[14], 0x2);
+  EXPECT_EQ(bytes[15], 0x3);
+}
+
+std::vector<const char*> testIpv6 = {
+    "::",
+    "0::",
+    "::0",
+    "0::0",
+    "a::b",
+    "::ab",
+    "ab::",
+    "a:b:c:d:e:f:a:b",
+    ":::",
+    "::::",
+    "::0::",
+    ":0::",
+    "::0:",
+    "0123:4567:890a:bcde:f012:3456:7890:abcd",
+    "::192.168.3.4",
+};
+
+TEST(Ipv6ToBytes, MultiTest1) {
+  uint8_t bytes1[16];
+  uint8_t bytes2[16];
+  for (auto addr : testIpv6) {
+    int ret1 = inet_pton(AF_INET6, addr, bytes1);
+    int ret2 = ipv6_str_to_bytes(addr, bytes2);
+    if (ret1 == 1) {
+      EXPECT_EQ(ret2, 0);
+      EXPECT_EQ(memcmp(bytes1, bytes2, sizeof(bytes1)), 0);
+    } else if (ret1 == 0) {
+      EXPECT_EQ(ret2, -1);
+    }
+  }
+}

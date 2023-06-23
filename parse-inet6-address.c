@@ -23,7 +23,32 @@ typedef struct {
   state_t state;
 } parse_ctx_t;
 
-static const char *parse_sep(const char *buf, sep_t *separator) {
+static inline const char *str_state(state_t s) {
+  switch (s) {
+    case INVALID:
+      return "INVALID";
+    case VALID:
+      return "VALID";
+    case FINISH:
+      return "FINISH";
+    default:
+      return "ERROR STATE";
+  }
+}
+
+static void print_parse_ctx(parse_ctx_t *ctx) {
+  printf("current_index: %d\n", (int)ctx->current_index);
+  printf("double_colon_index: %d\n", (int)ctx->double_colon_index);
+  printf("State: %s\n", str_state(ctx->state));
+}
+
+#define PRINT_PARSE_CTX(ctx)               \
+  ({                                       \
+    printf("%s:%d\n", __func__, __LINE__); \
+    print_parse_ctx(ctx);                  \
+  })
+
+static inline const char *parse_sep(const char *buf, sep_t *separator) {
   *separator = UNKNOWN;
   if (*buf && *buf == ':') {
     if (*(buf + 1) && *(buf + 1) == ':') {
@@ -37,7 +62,7 @@ static const char *parse_sep(const char *buf, sep_t *separator) {
   return buf;
 }
 
-static const char *parse_hexdigit(const char *buf, int *hex_val) {
+static inline const char *parse_hexdigit(const char *buf, int *hex_val) {
   *hex_val = -1;
   int c = *buf;
 
@@ -53,7 +78,7 @@ static const char *parse_hexdigit(const char *buf, int *hex_val) {
   return buf + 1;
 }
 
-static const char *parse_hextet(const char *buf, int *hextet_val) {
+static inline const char *parse_hextet(const char *buf, int *hextet_val) {
   *hextet_val = -1;
 
   const char *rbuf = buf;
@@ -81,33 +106,13 @@ static const char *parse_hextet(const char *buf, int *hextet_val) {
   return rbuf;
 }
 
-static const char *str_state(state_t s) {
-  switch (s) {
-    case INVALID:
-      return "INVALID";
-    case VALID:
-      return "VALID";
-    case FINISH:
-      return "FINISH";
-    default:
-      return "ERROR STATE";
-  }
-}
-
-static void print_parse_ctx(parse_ctx_t *ctx) {
-  printf("current_index: %d\n", (int)ctx->current_index);
-  printf("double_colon_index: %d\n", (int)ctx->double_colon_index);
-  printf("State: %s\n", str_state(ctx->state));
-}
-
-#define PRINT_PARSE_CTX(ctx)               \
-  ({                                       \
-    printf("%s:%d\n", __func__, __LINE__); \
-    print_parse_ctx(ctx);                  \
-  })
-
 const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   if (ctx->state == INVALID || ctx->state == FINISH) return buf;
+
+  if (ctx->current_index == 8 && ctx->state == VALID) {
+    ctx->state = FINISH;
+    return buf;
+  }
 
   if (ctx->current_index >= 8 ||
       ctx->double_colon_index >= ctx->current_index) {
@@ -218,7 +223,6 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
   }
 
   // PRINT_PARSE_CTX(&ctx);
-
   while (ctx.current_index < 8 && ctx.state == VALID)
     rbuf = parse_sep_and_hextet(rbuf, &ctx);
 
@@ -231,4 +235,18 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
 
   *valid = true;
   return rbuf;
+}
+
+int ipv6_str_to_bytes(const char *ipstr, uint8_t bytes[16]) {
+  uint16_t hextet[8];
+  bool valid;
+  ipstr = parse_ipv6(ipstr, hextet, &valid);
+  if (valid && *ipstr == '\0') {
+    for (int i = 0; i < 8; i++) {
+      bytes[2 * i] = (hextet[i] >> 8) & 0xff;
+      bytes[2 * i + 1] = hextet[i] & 0xff;
+    }
+    return 0;
+  }
+  return -1;
 }
