@@ -1,6 +1,6 @@
 
-#include <gtest/gtest.h>
 #include <arpa/inet.h>
+#include <gtest/gtest.h>
 
 #include <vector>
 
@@ -10,8 +10,7 @@ extern "C" {
 
 std::vector<const char*> zeroIp = {
     "::",       "0::",       "00::",       "000::",       "0000::",
-    "0:0000::", "00:0000::", "000:0000::", "0000:0000::",
-    "0:0:0:0:0:0:0:0",
+    "0:0000::", "00:0000::", "000:0000::", "0000:0000::", "0:0:0:0:0:0:0:0",
 };
 
 TEST(Ipv6Parser, ValidZeroAddr) {
@@ -171,13 +170,58 @@ TEST(Ipv6Parser, ValidIps1) {
   EXPECT_EQ(hextet[7], 0xbcd);
 }
 
+TEST(Ipv6Parser, ValidIps2) {
+  uint16_t hextet[8];
+  bool valid;
+  const char* addr = "a::b:0:0:0:0:c";
+  const char* ret = parse_ipv6(addr, hextet, &valid);
+  EXPECT_TRUE(valid);
+  EXPECT_EQ(hextet[0], 0xa);
+  EXPECT_EQ(hextet[1], 0);
+  EXPECT_EQ(hextet[2], 0xb);
+  EXPECT_EQ(hextet[3], 0);
+  EXPECT_EQ(hextet[4], 0);
+  EXPECT_EQ(hextet[5], 0);
+  EXPECT_EQ(hextet[6], 0);
+  EXPECT_EQ(hextet[7], 0xc);
+}
+
+TEST(Ipv6Parser, ValidIps3) {
+  uint16_t hextet[8];
+  bool valid;
+  const char* addr = "a:b:c:d:e:f:c::0";
+  const char* ret = parse_ipv6(addr, hextet, &valid);
+  EXPECT_EQ(ret - 15, addr);
+  EXPECT_TRUE(valid);
+  EXPECT_EQ(hextet[0], 0xa);
+  EXPECT_EQ(hextet[1], 0xb);
+  EXPECT_EQ(hextet[2], 0xc);
+  EXPECT_EQ(hextet[3], 0xd);
+  EXPECT_EQ(hextet[4], 0xe);
+  EXPECT_EQ(hextet[5], 0xf);
+  EXPECT_EQ(hextet[6], 0xc);
+  EXPECT_EQ(hextet[7], 0x0);
+}
+
 TEST(InetPtoN, ValidIps1) {
   uint8_t bytes[16];
-  const char* addr = "0a::00bcd";
+  const char* addr = "a:b:c:d:e:f:c::";
   int ret = inet_pton(AF_INET6, addr, bytes);
   EXPECT_EQ(ret, 1);
   EXPECT_EQ(bytes[0], 0);
   EXPECT_EQ(bytes[1], 0xa);
-  EXPECT_EQ(bytes[14], 0xb);
-  EXPECT_EQ(bytes[15], 0xcd);
+  EXPECT_EQ(bytes[2], 0);
+  EXPECT_EQ(bytes[3], 0xb);
+  EXPECT_EQ(bytes[4], 0);
+  EXPECT_EQ(bytes[5], 0xc);
+  EXPECT_EQ(bytes[6], 0);
+  EXPECT_EQ(bytes[7], 0xd);
+  EXPECT_EQ(bytes[8], 0);
+  EXPECT_EQ(bytes[9], 0xe);
+  EXPECT_EQ(bytes[10], 0);
+  EXPECT_EQ(bytes[11], 0xf);
+  EXPECT_EQ(bytes[12], 0);
+  EXPECT_EQ(bytes[13], 0xc);
+  EXPECT_EQ(bytes[14], 0);
+  EXPECT_EQ(bytes[15], 0);
 }

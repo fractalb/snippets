@@ -34,7 +34,6 @@ static const char *parse_sep(const char *buf, sep_t *separator) {
       return buf + 1;
     }
   }
-  // printf("\t\tchar: %c\n", *buf);
   return buf;
 }
 
@@ -60,24 +59,20 @@ static const char *parse_hextet(const char *buf, int *hextet_val) {
   const char *rbuf = buf;
   int hex_val = -1;
 
-  // printf("%d\t\tchar: %c\n", __LINE__, *rbuf);
   rbuf = parse_hexdigit(rbuf, &hex_val);
   if (hex_val == -1) return rbuf;
   *hextet_val = hex_val;  // At least, one valid hex digit
 
-  // printf("%d\t\tchar: %c\n", __LINE__, *rbuf);
   rbuf = parse_hexdigit(rbuf, &hex_val);
   if (hex_val == -1) return rbuf;
   *hextet_val *= 16;
   *hextet_val += hex_val;
 
-  // printf("%d\t\tchar: %c\n", __LINE__, *rbuf);
   rbuf = parse_hexdigit(rbuf, &hex_val);
   if (hex_val == -1) return rbuf;
   *hextet_val *= 16;
   *hextet_val += hex_val;
 
-  // printf("%d\t\tchar: %c\n", __LINE__, *rbuf);
   rbuf = parse_hexdigit(rbuf, &hex_val);
   if (hex_val == -1) return rbuf;
   *hextet_val *= 16;
@@ -114,7 +109,8 @@ static void print_parse_ctx(parse_ctx_t *ctx) {
 const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   if (ctx->state == INVALID || ctx->state == FINISH) return buf;
 
-  if (ctx->current_index > 8 || ctx->double_colon_index >= ctx->current_index) {
+  if (ctx->current_index >= 8 ||
+      ctx->double_colon_index >= ctx->current_index) {
     ctx->state = INVALID;
     return buf;
   }
@@ -137,14 +133,18 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   }
   // PRINT_PARSE_CTX(ctx);
   if (separator == DOUBLE_COLON) {
-    if (ctx->double_colon_index >= 0 || i + 2 >= 8) {
+    if (ctx->double_colon_index >= 0 || i >= 8) {
       ctx->state = INVALID;
       rbuf -= 2;  // Go back to begining of ::
       goto end;
     }
-    ctx->double_colon_index = i;
-    i += 2;  // Minimum two zero hextets. Be ware it can be more.
-  } else {   // SINGLE_COLON
+    // zero hextet. Be ware the number of zeros can be more.
+    ctx->double_colon_index = i++;
+    if (i == 8) {
+      ctx->state = FINISH;
+      goto end;
+    }
+  } else {  // SINGLE_COLON
     if (ctx->current_index == 0) {
       // Address should not start with a single colon
       ctx->state = INVALID;
@@ -159,6 +159,8 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
   rbuf = parse_hextet(rbuf, &hextet_val);
   if (hextet_val == -1) {
     if (single_colon_parsed) {
+      /* Check if it's a valid addres without the single colon
+       * which has just been parsed. */
       if (ctx->double_colon_index >= 0) {
         ctx->state = FINISH;
         rbuf--;  // Valid without the single colon
@@ -183,15 +185,15 @@ end:
 static inline int expand_double_colon(parse_ctx_t *ctx) {
   assert(ctx->current_index <= 8);
   assert(ctx->double_colon_index >= 0);
-  assert(ctx->double_colon_index + 2 <= 8);
+  assert(ctx->double_colon_index < 8);
   assert(ctx->double_colon_index < ctx->current_index);
   assert(ctx->state == FINISH);
   if (ctx->current_index == 8) return 0;
   int i, j;
-  for (i = ctx->current_index, j = 8; i != ctx->double_colon_index + 1;
+  for (i = ctx->current_index - 1, j = 7; i < j && i != ctx->double_colon_index;
        i--, j--)
     ctx->hextet[j] = ctx->hextet[i];
-  while (j != i) ctx->hextet[j--] = 0;
+  while (j > 0 && j != i) ctx->hextet[j--] = 0;
   return 0;
 }
 
