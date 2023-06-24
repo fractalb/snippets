@@ -142,7 +142,7 @@ static inline const char *str_state(state_t s) {
   }
 }
 
-static void print_parse_ctx(ipv6_parser_ctx_t *ctx) {
+[[maybe_unused]] static void print_parse_ctx(ipv6_parser_ctx_t *ctx) {
   printf("current_index: %d\n", (int)ctx->current_index);
   printf("double_colon_index: %d\n", (int)ctx->double_colon_index);
   printf("State: %s\n", str_state(ctx->state));

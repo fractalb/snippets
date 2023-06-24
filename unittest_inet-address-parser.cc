@@ -1,12 +1,8 @@
 
 #include <arpa/inet.h>
 #include <gtest/gtest.h>
-
 #include <vector>
-
-extern "C" {
 #include "inet-address-parser.h"
-}
 
 std::vector<const char*> zeroIp = {
     "::",       "0::",       "00::",       "000::",       "0000::",
@@ -175,6 +171,7 @@ TEST(Ipv6Parser, ValidIps2) {
   bool valid;
   const char* addr = "a::b:0:0:0:0:c";
   const char* ret = parse_ipv6(addr, hextet, &valid);
+  EXPECT_EQ(ret-strlen(addr), addr);
   EXPECT_TRUE(valid);
   EXPECT_EQ(hextet[0], 0xa);
   EXPECT_EQ(hextet[1], 0);
