@@ -18,10 +18,10 @@ hex2binary-test: hex2binary.c unittest_hex2binary.cc
 hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-parse-inet-address.o: parse-inet-address.c
+inet-address-parser.o: inet-address-parser.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test-ipv6-parse: unittest_parse-inet-address.cc parse-inet-address.o
+test-ipv6-parse: unittest_inet-address-parser.cc inet-address-parser.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main
 
 .PHONY=clean
