@@ -18,7 +18,7 @@ hex2binary-test: hex2binary.c unittest_hex2binary.cc
 hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-ip-parser.o: ip-parser.c
+ip-parser.o: ip-parser.c ip-parser.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 test-ip-parser: unittest_ip-parser.cc ip-parser.o

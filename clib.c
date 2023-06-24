@@ -9,8 +9,8 @@
 
 #define Q1(x) (((x) >> 24) & 0xff)
 #define Q2(x) (((x) >> 16) & 0xff)
-#define Q3(x) (((x) >>  8) & 0xff)
-#define Q4(x) (((x) >>  0) & 0xff)
+#define Q3(x) (((x) >> 8) & 0xff)
+#define Q4(x) (((x) >> 0) & 0xff)
 
 #define IPV4_MAX_STR_SIZE 16
 void u32_to_ip_quad(uint32_t ip, char str[IPV4_MAX_STR_SIZE]) {

@@ -1,13 +1,20 @@
 
+#include "ip-parser.h"
+
 #include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "ip-parser.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+#define Q1(x) (((x) >> 24) & 0xff)
+#define Q2(x) (((x) >> 16) & 0xff)
+#define Q3(x) (((x) >> 8) & 0xff)
+#define Q4(x) (((x) >> 0) & 0xff)
+
 
 static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
 
@@ -84,11 +91,6 @@ int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix) {
 err:
   return -1;
 }
-
-#define Q1(x) (((x) >> 24) & 0xff)
-#define Q2(x) (((x) >> 16) & 0xff)
-#define Q3(x) (((x) >>  8) & 0xff)
-#define Q4(x) (((x) >>  0) & 0xff)
 
 void print_ipv4(uint32_t ip, int mask) {
   printf("%d.%d.%d.%d/%d\n", Q1(ip), Q2(ip), Q3(ip), Q4(ip), mask);
