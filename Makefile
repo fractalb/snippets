@@ -1,8 +1,10 @@
 
-CFLAGS := -std=c11 -Wall -Wextra -fsanitize=undefined
-CXXFLAGS := -std=c++17 -Wall -Wextra -fsanitize=undefined
+CFLAGS := -std=c11 -Wall -Wextra -O2
+#CFLAGS += -fsanitize=undefined
+CXXFLAGS := -std=c++17 -Wall -Wextra -O2
+#CXXFLAGS += -fsanitize=undefined
 
-PROGS := hex2binary-test hex2binary-cmd hex-dump clib test-ip-parser
+PROGS := hex2binary-test hex2binary-cmd hex-dump clib unittest-ip-parser benchmark
 
 all: $(PROGS)
 
@@ -21,8 +23,11 @@ hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 ip-parser.o: ip-parser.c ip-parser.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test-ip-parser: unittest_ip-parser.cc ip-parser.o
+unittest-ip-parser: unittest_ip-parser.cc ip-parser.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main
+
+benchmark: benchmark-ip-parser.cc ip-parser.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ -lbenchmark
 
 .PHONY=clean
 clean:
