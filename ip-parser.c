@@ -71,19 +71,19 @@ err:
   return remainder;
 }
 
-int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *prefix) {
+int str2ipv4(const char *ipquad, uint32_t *ipaddr, int *mask) {
   const char *remainder = ipquad;
   int64_t value;
   remainder = parse_ipv4(remainder, &value);
   if (value < 0 || value > UINT_MAX) goto err;
   *ipaddr = (uint32_t)value;
-  if (prefix) {
+  if (mask) {
     int subnet_mask = 32;
     if (*remainder == '/') {
       remainder = parse_quad(++remainder, &subnet_mask);
       if (subnet_mask < 0 || subnet_mask > 32) goto err;
     }
-    *prefix = subnet_mask;
+    *mask = subnet_mask;
   }
   if (*remainder != '\0') goto err;
   return 0;
