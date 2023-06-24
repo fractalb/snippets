@@ -15,7 +15,6 @@
 #define Q3(x) (((x) >> 8) & 0xff)
 #define Q4(x) (((x) >> 0) & 0xff)
 
-
 static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
 
 /** Tries to parse a number (atmost 3 digits)

@@ -3,8 +3,8 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 const char *parse_ipv4(const char *str, int64_t *ipaddr);
 const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid);

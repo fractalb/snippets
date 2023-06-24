@@ -272,3 +272,27 @@ TEST(Ipv6ToBytes, MultiTest1) {
     }
   }
 }
+
+/******************* IPv4 Unittests ***************************/
+std::vector<const char*> testIpv4 = {
+    "",        ".",       "1.2.3..4",        ".1.2.3.4",  "192.168.1.2",
+    "1.2.3.4", "0.0.0.0", "256.255.255.255", "1.2.3.4.5", "01.02.03.04",
+    "1.2",
+};
+
+TEST(Ipv4ToUint32, MultiTest1) {
+  uint32_t ip1, ip2;
+  int mask;
+  for (auto addr : testIpv4) {
+    int ret1 = inet_pton(AF_INET, addr, &ip1);
+    int ret2 = str2ipv4(addr, &ip2, &mask);
+    // std::cout << "addr: " << addr << '\n';
+    if (ret1 == 1) {
+      EXPECT_EQ(ret2, 0);
+      EXPECT_EQ(mask, 32);
+      EXPECT_EQ(ip2, ntohl(ip1));
+    } else if (ret1 == 0) {
+      EXPECT_EQ(ret2, -1);
+    }
+  }
+}
