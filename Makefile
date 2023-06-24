@@ -24,7 +24,7 @@ ip-parser.o: ip-parser.c ip-parser.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 unittest-ip-parser: unittest_ip-parser.cc ip-parser.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main
+	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main -lpthread
 
 benchmark: benchmark-ip-parser.cc ip-parser.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lbenchmark
