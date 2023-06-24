@@ -346,6 +346,13 @@ int main() {
                             {"83.213.79/65", INVALID},
                             LAST_TEST_CASE};
   test_case_t ipv6_arr[] = {
+      {"::", VALID},
+      {":::", INVALID},
+      {"::::", INVALID},
+      {":0::", INVALID},
+      {"::0:", INVALID},
+      {"::0000", VALID},
+      {"::00000", INVALID},
       {"ffff:0102::24/48", VALID},
       {"::0a0b:28/68", VALID},
       {":0a0b::28/68", VALID},
