@@ -7,154 +7,6 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-/** This function will try to interpret the hex representation
- * of the given value as a base10 value and returns that value.
- *
- * If the hex reprsentation of the given value contains
- * alphabets (a - f) then it can't be interpreted as a
- * base10 value and this function will return -1.
- *
- * Examples:
- *
- *1. input : 146
- *
- *   146 => 0x92
- *   hex2base10(146) -> 92 (base10 value)
- *
- *2. input : 161
- *
- *   161 => 0xa1
- *   hex2base10(161) -> -1 ('a' can't be treated as a decimal number)
- */
-static int hex2base10(uint16_t val) {
-  int base10_val = 0;
-  int decimal_digit;
-
-  for (int i = 3; i >= 0; i--) {
-    decimal_digit = (val >> (i * 4)) & 0xf;
-    if (decimal_digit > 9) return -1;
-    base10_val *= 10;
-    base10_val += decimal_digit;
-  }
-  return base10_val;
-}
-
-/*TODO:
- * ::192.168.43.248/34  Should it be considered invalid?
- * Currently prefix 34 (> 32) and anything <= 128 is taken
- * as valid prefix even though IPv4 dotted quad is in inside IPv6.
- */
-int str2ipv6(const char *str, char buf[16], int *prefix) {
-  const char *s = str;
-  int px = -1;
-  int i_dc = 0; /* index of dc (double colon) */
-  int val = 0;
-  int i6 = 0;
-  int i4 = -1;
-  int nz = 0; /* no. of zero bytes */
-  char c;
-  char buf2[16];
-
-  if (buf == NULL) buf = buf2;
-
-  while ((c = *s++) != '\0') {
-    if (val > 65535) goto err;
-
-    if ('0' <= c && c <= '9') {
-      val *= 16;
-      val += c - '0';
-    } else if ('a' <= c && c <= 'f') {
-      val *= 16;
-      val += c - 'a' + 10;
-    } else if ('A' <= c && c <= 'F') {
-      val *= 16;
-      val += c - 'A' + 10;
-    } else if (px < 0) {
-      if (c == ':' && i6 < 13) {
-        buf[i6++] = val >> 8;
-        buf[i6++] = val & 0xff;
-        val = 0;
-        if (*s == ':') {
-          if (i6 == 14 || i_dc != 0) goto err;
-          i_dc = i6;
-          buf[i6++] = 0;
-          buf[i6++] = 0;
-          s++;
-        }
-        if (*s == '.' || *s == ':') {
-          goto err;
-        }
-      } else if (c == '.' && i6 < 13) {
-        i4 = 0;
-        break; /* IPv4 parsing now */
-      } else if (c == '/' && i6 < 15) {
-        buf[i6++] = val >> 8;
-        buf[i6++] = val & 0xff;
-        val = 0;
-        px = 128;
-      } else {
-        goto err;
-      }
-    } else {
-      goto err;
-    }
-  }
-
-  if (!i_dc) {
-    if ((px < 0 && i6 != 14) || (px >= 0 && i6 != 16)) goto err;
-  }
-
-  if (px >= 0 || i4 == 0) {
-    val = hex2base10(val);
-    if (val < 0) goto err;
-  }
-
-  for (s--; (c = *s++) != '\0';) {
-    if (val > 255) goto err;
-
-    if ('0' <= c && c <= '9') {
-      val *= 10;
-      val += c - '0';
-    } else if ((c == '.' && i4 < 3) || (c == '/' && i4 == 3)) {
-      if (*s == '.' || *s == '/')  // Two consecutive dots
-        goto err;
-      buf[i6++] = val;
-      i4++;
-      val = 0;
-    } else {
-      goto err;
-    }
-  }
-
-  if (i4 == 3 && val <= 255) {
-    buf[i6++] = val;
-  } else if (i4 == 4 && val <= 128) {
-    /* val is actually no. of bits of subnet mask */
-    px = val;
-  } else if (i4 == -1 && i6 <= 16) {
-    if (px >= 0 && val <= 128) {
-      px = val;
-    } else if (px < 0 && i6 <= 14) {
-      buf[i6++] = val >> 8;
-      buf[i6++] = val & 0xff;
-    } else {
-      goto err;
-    }
-  } else {
-    goto err;
-  }
-
-  nz = 16 - i6;
-  memmove(&buf[i_dc + nz], &buf[i_dc], i6 - i_dc);
-  memset(&buf[i_dc], 0, nz);
-
-  if (px >= 0 && prefix) *prefix = px;
-
-  return 0;
-err:
-  return -1;
-}
-
 static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
 
 /** Tries to parse a number (atmost 3 digits)
@@ -253,172 +105,290 @@ void print_ipv6(unsigned char buf[16], int prefix) {
   printf("%s\n", b);
   return;
 }
+#include <assert.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 typedef enum {
+  UNKNOWN = 0,
+  SINGLE_COLON = 1,
+  DOUBLE_COLON = 2,
+  SINGLE_DOT = 3,
+} sep_t;
+
+typedef enum {
+  INVALID = 0,
   VALID = 1,
-  INVALID = 2,
-} result_t;
-
-const char *result_str(result_t t) {
-  const char *s = NULL;
-  switch (t) {
-    case VALID:
-      s = "VALID";
-      break;
-    case INVALID:
-      s = "INVALID";
-      break;
-    default:
-      s = "UNKNOWN";
-      break;
-  }
-
-  return s;
-}
+  FINISH = 2,
+} state_t;
 
 typedef struct {
-  const char *s;
-  result_t expected;
-} test_case_t;
+  uint16_t *hextet;
+  uint8_t current_index;
+  int8_t double_colon_index;
+  state_t state;
+  const char *buf_backtrack;
+} parse_ctx_t;
 
-test_case_t LAST_TEST_CASE = {0, 0};
-
-typedef enum { IPv4, IPv6, UNKNOWN_TEST } TEST_NAME;
-
-result_t run_test(TEST_NAME t, const void *test_args) {
-  uint32_t ipaddr;
-  int prefix;
-  if (t == IPv4) {
-    if (str2ipv4((const char *)test_args, &ipaddr, &prefix) == 0)
-      return VALID;
-    else
-      return INVALID;
-  } else if (t == IPv6) {
-    if (str2ipv6((const char *)test_args, NULL, NULL) == 0)
-      return VALID;
-    else
-      return INVALID;
+static inline const char *str_state(state_t s) {
+  switch (s) {
+    case INVALID:
+      return "INVALID";
+    case VALID:
+      return "VALID";
+    case FINISH:
+      return "FINISH";
+    default:
+      return "ERROR STATE";
   }
-  return INVALID;
 }
 
-int main() {
-  test_case_t ipv4_arr[] = {{"10.1.2.3/22", VALID},
-                            {"192.168.32.2/29", VALID},
-                            {" 192.168.32.2/29", INVALID},
-                            {"192.168.32.2/29 ", INVALID},
-                            {"192.168.b.2/29", INVALID},
-                            {"192.168.2.3 ", INVALID},
-                            {"192.168.2.3", VALID},
-                            {"01.000.0.0/0", INVALID},
-                            {"1.000.0.0/0", INVALID},
-                            {"1.0.0.0/02", INVALID},
-                            {"+1.0.0.0/0", INVALID},
-                            {"1. 10.0.0", INVALID},
-                            {"192.168.32.2a", INVALID},
-                            {"192.168.32.2/", INVALID},
-                            {"192.168.32.2/33", INVALID},
-                            {"192.168.2/29", INVALID},
-                            {"192.168.2", INVALID},
-                            {"192...", INVALID},
-                            {".192.12.34", INVALID},
-                            {"00.192.12.34", INVALID},
-                            {"0.192.12.34", VALID},
-                            {"172.16.129.34/21", VALID},
-                            {"192.1.164.58/26", VALID},
-                            {"0.0.0.0/0", VALID},
-                            {"11.12.13.14/4", VALID},
-                            {"255.255.255.255/32", VALID},
-                            {"255.255.255.255/31", VALID},
-                            {"254.254.255.255/30", VALID},
-                            {"14.6.8.1/32", VALID},
-                            {"14.6.8./32", INVALID},
-                            {"10.2.3.29", VALID},
-                            {"10.2.2.2.32", INVALID},
-                            {"49.58.64.256", INVALID},
-                            {"59.32.4", INVALID},
-                            {"59.32..4", INVALID},
-                            {"....", INVALID},
-                            {"...", INVALID},
-                            {".../30", INVALID},
-                            {"..", INVALID},
-                            {"../20.", INVALID},
-                            {"83.213.79/65", INVALID},
-                            LAST_TEST_CASE};
-  test_case_t ipv6_arr[] = {
-      {"::", VALID},
-      {":::", INVALID},
-      {"::::", INVALID},
-      {":0::", INVALID},
-      {"::0:", INVALID},
-      {"::0000", VALID},
-      {"::00000", INVALID},
-      {"ffff:0102::24/48", VALID},
-      {"::0a0b:28/68", VALID},
-      {":0a0b::28/68", VALID},
-      {":0a0b::28:/68", VALID},
-      {":0a0b:28/68", INVALID},
-      {":0a0b:28:/68", INVALID},
-      {"abcd:dcba:eeff:ffee:dead:beef:8496:1024", VALID},
-      {"abcd:dcba:eeff:ffee:dead:beef:8496::", INVALID},
-      {"abcd:dcba:eeff:ffee:dead:beef:8496:1024/98", VALID},
-      {"9232:0:48g::23/122", INVALID},
-      {"9232:0:48::23/122", VALID},
-      {"::", VALID},
-      {"::192.168.43.28/24", VALID},
-      {"::192.168.43.248", VALID},
-      {"::192.168.43.248/34", VALID},
-      {"::257.168.43.248/34", INVALID},
-      {"::/192.168.43.28", INVALID},
-      {"::192..43.28", INVALID},
-      {"::192..43.28/30", INVALID},
-      {"::/192.43..28/30", INVALID},
-      {"::157.168.43.248.28/30", INVALID},
-      {"::/132", INVALID},
-      {"::/128", VALID},
-      {":://128", INVALID},
-      {":::/128", INVALID},
-      {"2004:::/128", INVALID},
-      {"10df::45::98/12", INVALID},
-      {"fffff::12:0/120", INVALID},
-      {"ffff::12:0/120", VALID},
-      LAST_TEST_CASE,
+static void print_parse_ctx(parse_ctx_t *ctx) {
+  printf("current_index: %d\n", (int)ctx->current_index);
+  printf("double_colon_index: %d\n", (int)ctx->double_colon_index);
+  printf("State: %s\n", str_state(ctx->state));
+}
+
+#define PRINT_PARSE_CTX(ctx)               \
+  ({                                       \
+    printf("%s:%d\n", __func__, __LINE__); \
+    print_parse_ctx(ctx);                  \
+  })
+
+static inline const char *parse_sep(const char *buf, sep_t *separator) {
+  *separator = UNKNOWN;
+  if (*buf && *buf == ':') {
+    if (*(buf + 1) && *(buf + 1) == ':') {
+      *separator = DOUBLE_COLON;
+      return buf + 2;
+    } else {
+      *separator = SINGLE_COLON;
+      return buf + 1;
+    }
+  } else if (*buf == '.') {
+    *separator = SINGLE_DOT;
+    return buf + 1;
+  }
+  return buf;
+}
+
+static inline const char *parse_hexdigit(const char *buf, int *hex_val) {
+  *hex_val = -1;
+  int c = *buf;
+
+  if (c >= '0' && c <= '9')
+    *hex_val = c - '0';
+  else if (c >= 'a' && c <= 'f')
+    *hex_val = c - 'a' + 10;
+  else if (c >= 'A' && c <= 'F')
+    *hex_val = c - 'A' + 10;
+  else
+    return buf;
+
+  return buf + 1;
+}
+
+static inline const char *parse_hextet(const char *buf, int *hextet_val) {
+  *hextet_val = -1;
+
+  const char *rbuf = buf;
+  int hex_val = -1;
+
+  rbuf = parse_hexdigit(rbuf, &hex_val);
+  if (hex_val == -1) return rbuf;
+  *hextet_val = hex_val;  // At least, one valid hex digit
+
+  rbuf = parse_hexdigit(rbuf, &hex_val);
+  if (hex_val == -1) return rbuf;
+  *hextet_val *= 16;
+  *hextet_val += hex_val;
+
+  rbuf = parse_hexdigit(rbuf, &hex_val);
+  if (hex_val == -1) return rbuf;
+  *hextet_val *= 16;
+  *hextet_val += hex_val;
+
+  rbuf = parse_hexdigit(rbuf, &hex_val);
+  if (hex_val == -1) return rbuf;
+  *hextet_val *= 16;
+  *hextet_val += hex_val;
+
+  return rbuf;
+}
+
+const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
+  if (ctx->state == INVALID || ctx->state == FINISH) return buf;
+
+  if (ctx->current_index == 8 && ctx->state == VALID) {
+    ctx->state = FINISH;
+    return buf;
+  }
+
+  if (ctx->current_index >= 8 ||
+      ctx->double_colon_index >= ctx->current_index) {
+    ctx->state = INVALID;
+    return buf;
+  }
+
+  bool single_colon_parsed = false;
+  uint8_t i = ctx->current_index;
+  sep_t separator = UNKNOWN;
+  const char *rbuf = buf;
+  int hextet_val;
+
+  // Parse separator
+  rbuf = parse_sep(rbuf, &separator);
+  // PRINT_PARSE_CTX(ctx);
+  if (separator == UNKNOWN) {
+    if (ctx->double_colon_index != -1)
+      ctx->state = FINISH;
+    else
+      ctx->state = INVALID;
+    goto end;
+  }
+  // PRINT_PARSE_CTX(ctx);
+  switch (separator) {
+    case DOUBLE_COLON:
+      if (ctx->double_colon_index >= 0) {
+        ctx->state = INVALID;
+        rbuf -= 2;  // Go back to begining of ::
+        goto end;
+      }
+      // zero hextet. Be ware the number of zeros can be more.
+      ctx->double_colon_index = i++;
+      if (i == 8) {
+        ctx->state = FINISH;
+        goto end;
+      }
+      break;
+    case SINGLE_COLON:
+      if (ctx->current_index == 0) {
+        // Address should not start with a single colon
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      single_colon_parsed = true;
+      break;
+    case SINGLE_DOT:
+      // PRINT_PARSE_CTX(ctx);
+      if (ctx->double_colon_index < 0 && i != 7) {
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      rbuf = ctx->buf_backtrack;
+      int64_t ipv4;
+      rbuf = parse_ipv4(rbuf, &ipv4);
+      if (ipv4 < 0 || ipv4 > UINT_MAX) {
+        ctx->state = INVALID;
+        goto end;
+      }
+      ctx->hextet[i - 1] = ((uint32_t)ipv4 >> 16) & 0xffff;
+      ctx->hextet[i++] = ((uint32_t)ipv4) & 0xffff;
+      ctx->state = FINISH;
+      goto end;
+    default:
+      assert(0);
+  }
+
+  ctx->buf_backtrack = rbuf;
+  // PRINT_PARSE_CTX(ctx);
+  rbuf = parse_hextet(rbuf, &hextet_val);
+  if (hextet_val == -1) {
+    if (single_colon_parsed) {
+      /* Check if it's a valid addres without the single colon
+       * which has just been parsed. */
+      if (ctx->double_colon_index >= 0) {
+        ctx->state = FINISH;
+        rbuf--;  // Valid without the single colon
+      } else {
+        // Should not end with a single colon ':'.
+        ctx->state = INVALID;
+      }
+      goto end;
+    }
+    // Parsed double colon
+    ctx->state = FINISH;
+    goto end;
+  }
+  ctx->hextet[i++] = hextet_val;
+
+end:
+  ctx->current_index = i;
+  // PRINT_PARSE_CTX(ctx);
+  return rbuf;
+}
+
+static inline int expand_double_colon(parse_ctx_t *ctx) {
+  assert(ctx->current_index <= 8);
+  assert(ctx->double_colon_index >= 0);
+  assert(ctx->double_colon_index < 8);
+  assert(ctx->double_colon_index < ctx->current_index);
+  assert(ctx->state == FINISH);
+  if (ctx->current_index == 8) return 0;
+  int i, j;
+  for (i = ctx->current_index - 1, j = 7; i < j && i != ctx->double_colon_index;
+       i--, j--)
+    ctx->hextet[j] = ctx->hextet[i];
+  while (j > 0 && j != i) ctx->hextet[j--] = 0;
+  return 0;
+}
+
+const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
+  memset(hextet, 0, 8 * sizeof(hextet[0]));
+  *valid = false;
+
+  parse_ctx_t ctx = {
+      .hextet = hextet,
+      .current_index = 0,
+      .double_colon_index = -1,
+      .state = VALID,
+      .buf_backtrack = NULL,
   };
 
-  printf("*****IPv4 Tests*****\n");
-  int passed_tests = 0;
-  int failed_tests = 0;
-  result_t r;
-  for (int i = 0; ipv4_arr[i].s != LAST_TEST_CASE.s; i++) {
-    if ((r = run_test(IPv4, ipv4_arr[i].s)) != ipv4_arr[i].expected) {
-      failed_tests++;
-      printf("%s -> expected: %s, parsed: %s\n", ipv4_arr[i].s,
-             result_str(ipv4_arr[i].expected), result_str(r));
-      ;
-    } else {
-      passed_tests++;
-    }
+  const char *rbuf = buf;
+  int hextet_val = -1;
+
+  rbuf = parse_hextet(rbuf, &hextet_val);
+  if (hextet_val != -1) {
+    hextet[0] = hextet_val;
+    ctx.current_index++;
   }
 
-  printf("Tests Passed: %d\nTests Failed: %d\n", passed_tests, failed_tests);
+  // PRINT_PARSE_CTX(&ctx);
+  while (ctx.current_index < 8 && ctx.state == VALID)
+    rbuf = parse_sep_and_hextet(rbuf, &ctx);
 
-  /*****************************************************************************/
+  if (ctx.state == INVALID) return rbuf;
 
-  printf("*****IPv6 Tests*****\n");
-  passed_tests = 0;
-  failed_tests = 0;
-  for (int i = 0; ipv6_arr[i].s != LAST_TEST_CASE.s; i++) {
-    if ((r = run_test(IPv6, ipv6_arr[i].s)) != ipv6_arr[i].expected) {
-      failed_tests++;
-      printf("%s -> expected: %s, parsed: %s\n", ipv6_arr[i].s,
-             result_str(ipv6_arr[i].expected), result_str(r));
-      ;
-    } else {
-      passed_tests++;
-    }
+  if (ctx.current_index < 8 && ctx.state == FINISH &&
+      ctx.double_colon_index >= 0) {
+    if (expand_double_colon(&ctx) != 0) return rbuf;
   }
 
-  printf("Tests Passed: %d\nTests Failed: %d\n", passed_tests, failed_tests);
+  *valid = true;
+  return rbuf;
+}
 
+int str2ipv6(const char *ipstr, uint8_t bytes[16]) {
+  uint16_t hextet[8];
+  bool valid;
+  ipstr = parse_ipv6(ipstr, hextet, &valid);
+  if (valid && *ipstr == '\0') {
+    for (int i = 0; i < 8; i++) {
+      bytes[2 * i] = (hextet[i] >> 8) & 0xff;
+      bytes[2 * i + 1] = hextet[i] & 0xff;
+    }
+    return 0;
+  }
+  return -1;
+}
+
+int main(int argc, const char* argv[]) {
+  printf("Program: %s\n", argv[0]);
   return 0;
 }
