@@ -2,7 +2,7 @@
 #include <arpa/inet.h>
 #include <gtest/gtest.h>
 #include <vector>
-#include "inet-address-parser.h"
+#include "ip-parser.h"
 
 std::vector<const char*> zeroIp = {
     "::",       "0::",       "00::",       "000::",       "0000::",

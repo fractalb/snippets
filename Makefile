@@ -2,7 +2,7 @@
 CFLAGS := -std=c11 -Wall -Wextra -fsanitize=undefined
 CXXFLAGS := -std=c++17 -Wall -Wextra -fsanitize=undefined
 
-PROGS := hex2binary-test hex2binary-cmd hex-dump clib test-ipv6-parse
+PROGS := hex2binary-test hex2binary-cmd hex-dump clib test-ip-parser
 
 all: $(PROGS)
 
@@ -18,10 +18,10 @@ hex2binary-test: hex2binary.c unittest_hex2binary.cc
 hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-inet-address-parser.o: inet-address-parser.c
+ip-parser.o: ip-parser.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test-ipv6-parse: unittest_inet-address-parser.cc inet-address-parser.o
+test-ip-parser: unittest_ip-parser.cc ip-parser.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main
 
 .PHONY=clean

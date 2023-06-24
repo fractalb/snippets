@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "inet-address-parser.h"
+#include "ip-parser.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
