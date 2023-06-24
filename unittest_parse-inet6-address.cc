@@ -262,7 +262,7 @@ TEST(Ipv6ToBytes, MultiTest1) {
   uint8_t bytes2[16];
   for (auto addr : testIpv6) {
     int ret1 = inet_pton(AF_INET6, addr, bytes1);
-    int ret2 = ipv6_str_to_bytes(addr, bytes2);
+    int ret2 = str2ipv6(addr, bytes2);
     // std::cout << "addr: " << addr << '\n';
     if (ret1 == 1) {
       EXPECT_EQ(ret2, 0);

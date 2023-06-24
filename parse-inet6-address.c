@@ -323,7 +323,7 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
   return rbuf;
 }
 
-int ipv6_str_to_bytes(const char *ipstr, uint8_t bytes[16]) {
+int str2ipv6(const char *ipstr, uint8_t bytes[16]) {
   uint16_t hextet[8];
   bool valid;
   ipstr = parse_ipv6(ipstr, hextet, &valid);
