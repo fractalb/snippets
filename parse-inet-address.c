@@ -1,9 +1,11 @@
 
+#include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "inet-address-parser.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -41,7 +43,7 @@ err:
   return str;
 }
 
-static const char *parse_ipv4(const char *str, int64_t *ipaddr) {
+const char *parse_ipv4(const char *str, int64_t *ipaddr) {
   *ipaddr = -1;
   unsigned quad1, quad2, quad3, quad4;
   const char *remainder = str;
@@ -105,12 +107,6 @@ void print_ipv6(unsigned char buf[16], int prefix) {
   printf("%s\n", b);
   return;
 }
-#include <assert.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
 typedef enum {
   UNKNOWN = 0,
@@ -131,7 +127,7 @@ typedef struct {
   int8_t double_colon_index;
   state_t state;
   const char *buf_backtrack;
-} parse_ctx_t;
+} ipv6_parser_ctx_t;
 
 static inline const char *str_state(state_t s) {
   switch (s) {
@@ -146,7 +142,7 @@ static inline const char *str_state(state_t s) {
   }
 }
 
-static void print_parse_ctx(parse_ctx_t *ctx) {
+static void print_parse_ctx(ipv6_parser_ctx_t *ctx) {
   printf("current_index: %d\n", (int)ctx->current_index);
   printf("double_colon_index: %d\n", (int)ctx->double_colon_index);
   printf("State: %s\n", str_state(ctx->state));
@@ -219,7 +215,7 @@ static inline const char *parse_hextet(const char *buf, int *hextet_val) {
   return rbuf;
 }
 
-const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
+const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
   if (ctx->state == INVALID || ctx->state == FINISH) return buf;
 
   if (ctx->current_index == 8 && ctx->state == VALID) {
@@ -323,7 +319,7 @@ end:
   return rbuf;
 }
 
-static inline int expand_double_colon(parse_ctx_t *ctx) {
+static inline int expand_double_colon(ipv6_parser_ctx_t *ctx) {
   assert(ctx->current_index <= 8);
   assert(ctx->double_colon_index >= 0);
   assert(ctx->double_colon_index < 8);
@@ -342,7 +338,7 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
   memset(hextet, 0, 8 * sizeof(hextet[0]));
   *valid = false;
 
-  parse_ctx_t ctx = {
+  ipv6_parser_ctx_t ctx = {
       .hextet = hextet,
       .current_index = 0,
       .double_colon_index = -1,
@@ -386,9 +382,4 @@ int str2ipv6(const char *ipstr, uint8_t bytes[16]) {
     return 0;
   }
   return -1;
-}
-
-int main(int argc, const char* argv[]) {
-  printf("Program: %s\n", argv[0]);
-  return 0;
 }

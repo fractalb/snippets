@@ -5,7 +5,7 @@
 #include <vector>
 
 extern "C" {
-#include "parse-inet-address.c"
+#include "inet-address-parser.h"
 }
 
 std::vector<const char*> zeroIp = {
