@@ -254,6 +254,7 @@ std::vector<const char*> testIpv6 = {
     "::0:",
     "0123:4567:890a:bcde:f012:3456:7890:abcd",
     "::192.168.3.4",
+    "::0192.168.3.4",
 };
 
 TEST(Ipv6ToBytes, MultiTest1) {
@@ -262,6 +263,7 @@ TEST(Ipv6ToBytes, MultiTest1) {
   for (auto addr : testIpv6) {
     int ret1 = inet_pton(AF_INET6, addr, bytes1);
     int ret2 = ipv6_str_to_bytes(addr, bytes2);
+    // std::cout << "addr: " << addr << '\n';
     if (ret1 == 1) {
       EXPECT_EQ(ret2, 0);
       EXPECT_EQ(memcmp(bytes1, bytes2, sizeof(bytes1)), 0);

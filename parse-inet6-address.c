@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,6 +9,7 @@ typedef enum {
   UNKNOWN = 0,
   SINGLE_COLON = 1,
   DOUBLE_COLON = 2,
+  SINGLE_DOT = 3,
 } sep_t;
 
 typedef enum {
@@ -21,6 +23,7 @@ typedef struct {
   uint8_t current_index;
   int8_t double_colon_index;
   state_t state;
+  const char *buf_backtrack;
 } parse_ctx_t;
 
 static inline const char *str_state(state_t s) {
@@ -48,6 +51,62 @@ static void print_parse_ctx(parse_ctx_t *ctx) {
     print_parse_ctx(ctx);                  \
   })
 
+static inline bool is_ascii_digit(int x) { return x >= '0' && x <= '9'; }
+
+/** Tries to parse a number (atmost 3 digits)
+ * in an IPv4 quad. Stops at first non-digit
+ * character or after the first three digits.
+ * `value` will be set to -1 if there are zero
+ * digits or more than 3 digits.
+ *
+ *    ┌─► str argument
+ *    │┌───┐
+ *   "└─192│.168.2.1"
+ *     └───┘│
+ *          └─► str returned
+ */
+static inline const char *parse_quad(const char *str, int *value) {
+  *value = -1;
+  int val = 0;
+  int i = 0;
+  // Make sure, no left padding of zeroes.
+  // Rejects 00, 01, 001, but accepts 0.
+  if (*str == '0' && is_ascii_digit(*(str + 1))) goto err;
+  for (; i < 3 && is_ascii_digit(*str); i++, str++) {
+    val *= 10;
+    val += *str - '0';
+  }
+  // Reject no digit characters case
+  if (i == 0) goto err;
+  // Reject more than 3 digit characters
+  if (i == 3 && is_ascii_digit(*str)) goto err;
+  *value = val;
+err:
+  return str;
+}
+
+static const char *parse_ipv4(const char *str, int64_t *ipaddr) {
+  *ipaddr = -1;
+  unsigned quad1, quad2, quad3, quad4;
+  const char *remainder = str;
+  int value;
+  remainder = parse_quad(remainder, &value);
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
+  quad1 = value;
+  remainder = parse_quad(++remainder, &value);
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
+  quad2 = value;
+  remainder = parse_quad(++remainder, &value);
+  if (value < 0 || value > 255 || *remainder != '.') goto err;
+  quad3 = value;
+  remainder = parse_quad(++remainder, &value);
+  if (value < 0 || value > 255) goto err;
+  quad4 = value;
+  *ipaddr = (quad1 << 24) + (quad2 << 16) + (quad3 << 8) + quad4;
+err:
+  return remainder;
+}
+
 static inline const char *parse_sep(const char *buf, sep_t *separator) {
   *separator = UNKNOWN;
   if (*buf && *buf == ':') {
@@ -58,6 +117,9 @@ static inline const char *parse_sep(const char *buf, sep_t *separator) {
       *separator = SINGLE_COLON;
       return buf + 1;
     }
+  } else if (*buf == '.') {
+    *separator = SINGLE_DOT;
+    return buf + 1;
   }
   return buf;
 }
@@ -137,30 +199,53 @@ const char *parse_sep_and_hextet(const char *buf, parse_ctx_t *ctx) {
     goto end;
   }
   // PRINT_PARSE_CTX(ctx);
-  if (separator == DOUBLE_COLON) {
-    if (ctx->double_colon_index >= 0 || i >= 8) {
-      ctx->state = INVALID;
-      rbuf -= 2;  // Go back to begining of ::
-      goto end;
-    }
-    // zero hextet. Be ware the number of zeros can be more.
-    ctx->double_colon_index = i++;
-    if (i == 8) {
+  switch (separator) {
+    case DOUBLE_COLON:
+      if (ctx->double_colon_index >= 0) {
+        ctx->state = INVALID;
+        rbuf -= 2;  // Go back to begining of ::
+        goto end;
+      }
+      // zero hextet. Be ware the number of zeros can be more.
+      ctx->double_colon_index = i++;
+      if (i == 8) {
+        ctx->state = FINISH;
+        goto end;
+      }
+      break;
+    case SINGLE_COLON:
+      if (ctx->current_index == 0) {
+        // Address should not start with a single colon
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      single_colon_parsed = true;
+      break;
+    case SINGLE_DOT:
+      // PRINT_PARSE_CTX(ctx);
+      if (ctx->double_colon_index < 0 && i != 7) {
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      rbuf = ctx->buf_backtrack;
+      int64_t ipv4;
+      rbuf = parse_ipv4(rbuf, &ipv4);
+      if (ipv4 < 0 || ipv4 > UINT_MAX) {
+        ctx->state = INVALID;
+        goto end;
+      }
+      ctx->hextet[i - 1] = ((uint32_t)ipv4 >> 16) & 0xffff;
+      ctx->hextet[i++] = ((uint32_t)ipv4) & 0xffff;
       ctx->state = FINISH;
       goto end;
-    }
-  } else {  // SINGLE_COLON
-    if (ctx->current_index == 0) {
-      // Address should not start with a single colon
-      ctx->state = INVALID;
-      rbuf--;
-      goto end;
-    }
-    single_colon_parsed = true;
+    default:
+      assert(0);
   }
 
+  ctx->buf_backtrack = rbuf;
   // PRINT_PARSE_CTX(ctx);
-
   rbuf = parse_hextet(rbuf, &hextet_val);
   if (hextet_val == -1) {
     if (single_colon_parsed) {
@@ -211,6 +296,7 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
       .current_index = 0,
       .double_colon_index = -1,
       .state = VALID,
+      .buf_backtrack = NULL,
   };
 
   const char *rbuf = buf;
