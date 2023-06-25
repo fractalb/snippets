@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 
+// Undef to enable alternative IPv6 parser implementation
+#define SEP_AND_HEX
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define Q1(x) (((x) >> 24) & 0xff)
@@ -216,6 +219,7 @@ static inline const char *parse_hextet(const char *buf, int *hextet_val) {
   return rbuf;
 }
 
+#ifdef SEP_AND_HEX
 const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
   if (ctx->state == INVALID || ctx->state == FINISH) return buf;
 
@@ -238,14 +242,6 @@ const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
 
   // Parse separator
   rbuf = parse_sep(rbuf, &separator);
-  // PRINT_PARSE_CTX(ctx);
-  if (separator == UNKNOWN) {
-    if (ctx->double_colon_index != -1)
-      ctx->state = FINISH;
-    else
-      ctx->state = INVALID;
-    goto end;
-  }
   // PRINT_PARSE_CTX(ctx);
   switch (separator) {
     case DOUBLE_COLON:
@@ -288,8 +284,13 @@ const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
       ctx->hextet[i++] = ((uint32_t)ipv4) & 0xffff;
       ctx->state = FINISH;
       goto end;
+    case UNKNOWN:
     default:
-      assert(0);
+      if (ctx->double_colon_index != -1)
+        ctx->state = FINISH;
+      else
+        ctx->state = INVALID;
+      goto end;
   }
 
   ctx->buf_backtrack = rbuf;
@@ -319,6 +320,110 @@ end:
   // PRINT_PARSE_CTX(ctx);
   return rbuf;
 }
+#else
+const char *parse_hextet_and_sep(const char *buf, ipv6_parser_ctx_t *ctx) {
+  if (ctx->state == INVALID || ctx->state == FINISH) return buf;
+
+  if (ctx->current_index == 8) {
+    ctx->state = FINISH;
+    return buf;
+  }
+
+  if (ctx->current_index >= 8 ||
+      ctx->double_colon_index >= ctx->current_index) {
+    ctx->state = INVALID;
+    return buf;
+  }
+
+  uint8_t i = ctx->current_index;
+  sep_t separator = UNKNOWN;
+  const char *rbuf = buf;
+  int hextet_val;
+
+  // PRINT_PARSE_CTX(ctx);
+  // Parse hextet
+  rbuf = parse_hextet(rbuf, &hextet_val);
+  if (hextet_val == -1) {
+    if (i == 0) {
+      // Double colon at the beginning?
+      // Continue processing
+    } else if (ctx->double_colon_index == i - 1) {
+      ctx->state = FINISH;
+      goto end;
+    } else if (ctx->double_colon_index >= 0) {
+      ctx->state = FINISH;
+      rbuf--;  // Don't consume the last `:`
+      goto end;
+    } else {
+      ctx->state = INVALID;
+      goto end;
+    }
+  } else {
+    ctx->hextet[i++] = hextet_val;
+    if (i == 8) {
+      ctx->state = FINISH;
+      goto end;
+    }
+  }
+
+  // PRINT_PARSE_CTX(ctx);
+  // Parse separator
+  rbuf = parse_sep(rbuf, &separator);
+  switch (separator) {
+    case DOUBLE_COLON:
+      if (ctx->double_colon_index >= 0 || i >= 8) {
+        ctx->state = INVALID;
+        rbuf -= 2;  // Go back to begining of ::
+        goto end;
+      }
+      // zero hextet. Be ware the number of zeros can be more.
+      ctx->double_colon_index = i++;
+      if (i == 8) {
+        ctx->state = FINISH;
+        goto end;
+      }
+      break;
+    case SINGLE_COLON:
+      if (i == 0 || i >= 8) {
+        // Address should not start with a single colon
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      break;
+    case SINGLE_DOT:
+      if (ctx->double_colon_index < 0 && i != 7) {
+        ctx->state = INVALID;
+        rbuf--;
+        goto end;
+      }
+      int64_t ipv4;
+      rbuf = buf;  // reset
+      rbuf = parse_ipv4(rbuf, &ipv4);
+      if (ipv4 < 0 || ipv4 > UINT32_MAX) {
+        ctx->state = INVALID;
+        goto end;
+      }
+      ctx->hextet[i - 1] = ((uint32_t)ipv4 >> 16) & 0xffff;
+      ctx->hextet[i++] = ((uint32_t)ipv4) & 0xffff;
+      ctx->state = FINISH;
+      goto end;
+    case UNKNOWN:
+    default:
+      // PRINT_PARSE_CTX(ctx);
+      if (ctx->double_colon_index >= 0 || i == 8)
+        ctx->state = FINISH;
+      else
+        ctx->state = INVALID;
+      goto end;
+  }
+  // PRINT_PARSE_CTX(ctx);
+end:
+  ctx->current_index = i;
+  // PRINT_PARSE_CTX(ctx);
+  return rbuf;
+}
+#endif
 
 static inline int expand_double_colon(ipv6_parser_ctx_t *ctx) {
   assert(ctx->current_index <= 8);
@@ -348,17 +453,23 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
   };
 
   const char *rbuf = buf;
-  int hextet_val = -1;
 
+#ifdef SEP_AND_HEX
+  int hextet_val = -1;
   rbuf = parse_hextet(rbuf, &hextet_val);
   if (hextet_val != -1) {
     hextet[0] = hextet_val;
     ctx.current_index++;
   }
+#endif
 
   // PRINT_PARSE_CTX(&ctx);
   while (ctx.current_index < 8 && ctx.state == VALID)
+#ifdef SEP_AND_HEX
     rbuf = parse_sep_and_hextet(rbuf, &ctx);
+#else
+    rbuf = parse_hextet_and_sep(rbuf, &ctx);
+#endif
 
   if (ctx.state == INVALID) return rbuf;
 
