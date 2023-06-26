@@ -12,13 +12,13 @@ std::vector<const char*> zeroIp = {
 };
 
 TEST(Ipv6Parser, ValidZeroAddr) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   for (auto addr : zeroIp) {
-    const char* ret = parse_ipv6(addr, hextet, &valid);
+    const char* ret = parse_ipv6(addr, bytes, &valid);
     EXPECT_TRUE(valid);
     EXPECT_EQ(addr + strlen(addr), ret);
-    for (auto a : hextet) EXPECT_EQ(a, 0);
+    for (auto a : bytes) EXPECT_EQ(a, 0);
   }
 }
 
@@ -33,173 +33,193 @@ TEST(Ipv6Parser, ValidZeroAddr) {
 // "0:0::",
 
 TEST(Ipv6Parser, InvalidIpAddr1) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = ":0::";
   // std::cout << "addr = " << addr << '\n';
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_EQ(ret, addr);
   EXPECT_FALSE(valid);
 }
 
 TEST(Ipv6Parser, InvalidIpAddr2) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "0:00000:";
   // std::cout << "addr = " << addr << '\n';
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_EQ(ret - 6, addr);
   EXPECT_FALSE(valid);
 }
 
 TEST(Ipv6Parser, ValidInvalid1) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = ":::";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 2);
-  for (auto a : hextet) EXPECT_EQ(a, 0);
+  for (auto a : bytes) EXPECT_EQ(a, 0);
 }
 
 TEST(Ipv6Parser, ValidInvalid2) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::::";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 2);
-  for (auto a : hextet) EXPECT_EQ(a, 0);
+  for (auto a : bytes) EXPECT_EQ(a, 0);
 }
 
 TEST(Ipv6Parser, ValidInvalid3) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "0::::";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 3);
-  for (auto a : hextet) EXPECT_EQ(a, 0);
+  for (auto a : bytes) EXPECT_EQ(a, 0);
 }
 
 TEST(Ipv6Parser, ValidInvalid4) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "0:0:::";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 5);
-  for (auto a : hextet) EXPECT_EQ(a, 0);
+  for (auto a : bytes) EXPECT_EQ(a, 0);
 }
 
 TEST(Ipv6Parser, ValidInvalid5) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::0:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 3);
-  for (auto a : hextet) EXPECT_EQ(a, 0);
+  for (auto a : bytes) EXPECT_EQ(a, 0);
 }
 
 TEST(Ipv6Parser, ValidInvalid6) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::0a:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 4);
-  for (int i = 0; i < 7; ++i) {
-    EXPECT_EQ(hextet[i], 0);
+  for (int i = 0; i < 15; ++i) {
+    EXPECT_EQ(bytes[i], 0);
   }
-  EXPECT_EQ(hextet[7], 0xa);
+  EXPECT_EQ(bytes[15], 0xa);
 }
 
 TEST(Ipv6Parser, ValidInvalid7) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::0ab:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 5);
-  for (int i = 0; i < 7; ++i) {
-    EXPECT_EQ(hextet[i], 0);
+  for (int i = 0; i < 15; ++i) {
+    EXPECT_EQ(bytes[i], 0);
   }
-  EXPECT_EQ(hextet[7], 0xab);
+  EXPECT_EQ(bytes[15], 0xab);
 }
 
 TEST(Ipv6Parser, ValidInvalid8) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::0abc:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 6);
-  for (int i = 0; i < 7; ++i) {
-    EXPECT_EQ(hextet[i], 0);
+  for (int i = 0; i < 14; ++i) {
+    EXPECT_EQ(bytes[i], 0);
   }
-  EXPECT_EQ(hextet[7], 0xabc);
+  EXPECT_EQ(bytes[14], 0xa);
+  EXPECT_EQ(bytes[15], 0xbc);
 }
 
 TEST(Ipv6Parser, ValidInvalid9) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "::0abcd:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 6);
-  for (int i = 0; i < 7; ++i) {
-    EXPECT_EQ(hextet[i], 0);
+  for (int i = 0; i < 14; ++i) {
+    EXPECT_EQ(bytes[i], 0);
   }
-  EXPECT_EQ(hextet[7], 0xabc);
+  EXPECT_EQ(bytes[14], 0xa);
+  EXPECT_EQ(bytes[15], 0xbc);
 }
 
 TEST(Ipv6Parser, ValidIps1) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "0a::bcd:";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_TRUE(valid);
   EXPECT_EQ(ret - addr, 7);
-  EXPECT_EQ(hextet[0], 0xa);
-  for (int i = 1; i < 7; ++i) {
-    EXPECT_EQ(hextet[i], 0);
+  EXPECT_EQ(bytes[0], 0);
+  EXPECT_EQ(bytes[1], 0xa);
+  for (int i = 2; i < 14; ++i) {
+    EXPECT_EQ(bytes[i], 0);
   }
-  EXPECT_EQ(hextet[7], 0xbcd);
+  EXPECT_EQ(bytes[14], 0xb);
+  EXPECT_EQ(bytes[15], 0xcd);
 }
 
 TEST(Ipv6Parser, ValidIps2) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "a::b:0:0:0:0:c";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_EQ(ret - strlen(addr), addr);
   EXPECT_TRUE(valid);
-  EXPECT_EQ(hextet[0], 0xa);
-  EXPECT_EQ(hextet[1], 0);
-  EXPECT_EQ(hextet[2], 0xb);
-  EXPECT_EQ(hextet[3], 0);
-  EXPECT_EQ(hextet[4], 0);
-  EXPECT_EQ(hextet[5], 0);
-  EXPECT_EQ(hextet[6], 0);
-  EXPECT_EQ(hextet[7], 0xc);
+  EXPECT_EQ(bytes[0], 0x0);
+  EXPECT_EQ(bytes[1], 0xa);
+  EXPECT_EQ(bytes[2], 0);
+  EXPECT_EQ(bytes[3], 0);
+  EXPECT_EQ(bytes[4], 0x0);
+  EXPECT_EQ(bytes[5], 0xb);
+  EXPECT_EQ(bytes[6], 0);
+  EXPECT_EQ(bytes[7], 0);
+  EXPECT_EQ(bytes[8], 0);
+  EXPECT_EQ(bytes[9], 0);
+  EXPECT_EQ(bytes[10], 0);
+  EXPECT_EQ(bytes[11], 0);
+  EXPECT_EQ(bytes[12], 0);
+  EXPECT_EQ(bytes[13], 0);
+  EXPECT_EQ(bytes[14], 0x0);
+  EXPECT_EQ(bytes[15], 0xc);
 }
 
 TEST(Ipv6Parser, ValidIps3) {
-  uint16_t hextet[8];
+  uint8_t bytes[16];
   bool valid;
   const char* addr = "a:b:c:d:e:f:c::0";
-  const char* ret = parse_ipv6(addr, hextet, &valid);
+  const char* ret = parse_ipv6(addr, bytes, &valid);
   EXPECT_EQ(ret - 15, addr);
   EXPECT_TRUE(valid);
-  EXPECT_EQ(hextet[0], 0xa);
-  EXPECT_EQ(hextet[1], 0xb);
-  EXPECT_EQ(hextet[2], 0xc);
-  EXPECT_EQ(hextet[3], 0xd);
-  EXPECT_EQ(hextet[4], 0xe);
-  EXPECT_EQ(hextet[5], 0xf);
-  EXPECT_EQ(hextet[6], 0xc);
-  EXPECT_EQ(hextet[7], 0x0);
+  EXPECT_EQ(bytes[0], 0x0);
+  EXPECT_EQ(bytes[1], 0xa);
+  EXPECT_EQ(bytes[2], 0x0);
+  EXPECT_EQ(bytes[3], 0xb);
+  EXPECT_EQ(bytes[4], 0x0);
+  EXPECT_EQ(bytes[5], 0xc);
+  EXPECT_EQ(bytes[6], 0x0);
+  EXPECT_EQ(bytes[7], 0xd);
+  EXPECT_EQ(bytes[8], 0x0);
+  EXPECT_EQ(bytes[9], 0xe);
+  EXPECT_EQ(bytes[10], 0x0);
+  EXPECT_EQ(bytes[11], 0xf);
+  EXPECT_EQ(bytes[12], 0x0);
+  EXPECT_EQ(bytes[13], 0xc);
+  EXPECT_EQ(bytes[14], 0x0);
+  EXPECT_EQ(bytes[15], 0x0);
 }
 
 TEST(InetPtoN, ValidIps1) {

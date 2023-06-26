@@ -11,6 +11,10 @@
 // Undef to enable alternative IPv6 parser implementation
 #define SEP_AND_HEX
 
+#ifndef __BYTE_ORDER__
+#error __BYTE_ORDER__ not defined!
+#endif
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define Q1(x) (((x) >> 24) & 0xff)
@@ -126,7 +130,7 @@ typedef enum {
 } state_t;
 
 typedef struct {
-  uint16_t *hextet;
+  uint8_t *bytes;
   uint8_t current_index;
   int8_t double_colon_index;
   state_t state;
@@ -219,6 +223,15 @@ static inline const char *parse_hextet(const char *buf, int *hextet_val) {
   return rbuf;
 }
 
+static inline void set_hextet(uint8_t *bytes, int hextet_index, uint16_t hextet) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  bytes[2*hextet_index] = (hextet >> 8) & 0xff;
+  bytes[2*hextet_index + 1] = hextet & 0xff;
+#else
+#error "Not a little endian machine"
+#endif
+}
+
 #ifdef SEP_AND_HEX
 const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
   if (ctx->state == INVALID || ctx->state == FINISH) return buf;
@@ -280,8 +293,8 @@ const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
         ctx->state = INVALID;
         goto end;
       }
-      ctx->hextet[i - 1] = ((uint32_t)ipv4 >> 16) & 0xffff;
-      ctx->hextet[i++] = ((uint32_t)ipv4) & 0xffff;
+      set_hextet(ctx->bytes, i - 1, ((uint32_t)ipv4 >> 16) & 0xffff);
+      set_hextet(ctx->bytes, i++, ((uint32_t)ipv4) & 0xffff);
       ctx->state = FINISH;
       goto end;
     case UNKNOWN:
@@ -313,7 +326,7 @@ const char *parse_sep_and_hextet(const char *buf, ipv6_parser_ctx_t *ctx) {
     ctx->state = FINISH;
     goto end;
   }
-  ctx->hextet[i++] = hextet_val;
+  set_hextet(ctx->bytes, i++, hextet_val);
 
 end:
   ctx->current_index = i;
@@ -433,19 +446,21 @@ static inline int expand_double_colon(ipv6_parser_ctx_t *ctx) {
   assert(ctx->state == FINISH);
   if (ctx->current_index == 8) return 0;
   int i, j;
-  for (i = ctx->current_index - 1, j = 7; i < j && i != ctx->double_colon_index;
+  for (i = 2*ctx->current_index - 1, j = 15; i != 2*ctx->double_colon_index;
        i--, j--)
-    ctx->hextet[j] = ctx->hextet[i];
-  while (j > 0 && j != i) ctx->hextet[j--] = 0;
+    ctx->bytes[j] = ctx->bytes[i];
+  i++;
+  while (i <= j)
+    ctx->bytes[i++] = 0;
   return 0;
 }
 
-const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
-  memset(hextet, 0, 8 * sizeof(hextet[0]));
+const char *parse_ipv6(const char *buf, uint8_t bytes[16], bool *valid) {
+  memset(bytes, 0, 16);
   *valid = false;
 
   ipv6_parser_ctx_t ctx = {
-      .hextet = hextet,
+      .bytes = bytes,
       .current_index = 0,
       .double_colon_index = -1,
       .state = VALID,
@@ -458,7 +473,7 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
   int hextet_val = -1;
   rbuf = parse_hextet(rbuf, &hextet_val);
   if (hextet_val != -1) {
-    hextet[0] = hextet_val;
+    set_hextet(ctx.bytes, 0, hextet_val);
     ctx.current_index++;
   }
 #endif
@@ -483,14 +498,9 @@ const char *parse_ipv6(const char *buf, uint16_t hextet[8], bool *valid) {
 }
 
 int str2ipv6(const char *ipstr, uint8_t bytes[16]) {
-  uint16_t hextet[8];
   bool valid;
-  ipstr = parse_ipv6(ipstr, hextet, &valid);
+  ipstr = parse_ipv6(ipstr, bytes, &valid);
   if (valid && *ipstr == '\0') {
-    for (int i = 0; i < 8; i++) {
-      bytes[2 * i] = (hextet[i] >> 8) & 0xff;
-      bytes[2 * i + 1] = hextet[i] & 0xff;
-    }
     return 0;
   }
   return -1;
