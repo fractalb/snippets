@@ -4,7 +4,7 @@ CFLAGS := -std=c11 -Wall -Wextra -O2
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
 #CXXFLAGS += -fsanitize=undefined
 
-PROGS := hex2binary-test hex2binary-cmd hex-dump clib unittest-ip-parser benchmark
+PROGS := hex2binary-test hex2binary-cmd hex-dump clib unittest-ip-parser benchmark iprange
 
 all: $(PROGS)
 
@@ -22,6 +22,9 @@ hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 
 ip-parser.o: ip-parser.c ip-parser.h
 	$(CC) $(CFLAGS) -c $< -o $@
+
+iprange: ip-range.c ip-parser.o
+	$(CC) $(CFLAGS) $^ -o $@
 
 unittest-ip-parser: unittest_ip-parser.cc ip-parser.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lgtest -lgtest_main -lpthread
