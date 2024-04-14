@@ -1,13 +1,14 @@
 #include "ip-parser.h"
 #include <stdio.h>
 
+#define TEST_IPMASK 0
 unsigned ipmask(int n) {
 	uint64_t mask64 = UINT64_MAX;
 	unsigned mask = UINT32_MAX;
 	return ((mask64 >> (32 - n)) << (32 - n)) & mask;
 }
 
-static void test_ipmask() {
+[[maybe_unused]] static void test_ipmask() {
 	for (int i=0; i<= 32; i++) {
 		printf("i=%d, mask=%#x\n", i, ipmask(i));
 	}
@@ -34,7 +35,7 @@ static void parse_and_print_range(const char *ipstring) {
 	print_range(ipaddr, prefix);
 }
 int main(int argc, char *argv[]) {
-#if 0
+#if TEST_IPMASK
 	test_ipmask();
 #else
 	if (argc == 1) {

@@ -61,7 +61,7 @@ static void BM_Inetpton(benchmark::State& state) {
 BENCHMARK(BM_Inetpton);
 
 static void BM_InetNework(benchmark::State& state) {
-  uint32_t ipaddr;
+  [[maybe_unused]]uint32_t ipaddr;
   for (auto _ : state) ipaddr = inet_network(ipquad);
   // std::cout << "inet_network: " << ipaddr << '\n';
 }
