@@ -94,8 +94,15 @@ err:
   return -1;
 }
 
+const char *ipv4_string(char ipstr[static INET_ADDRSTRLEN], uint32_t ipaddr) {
+  snprintf(ipstr, INET_ADDRSTRLEN, "%d.%d.%d.%d", Q1(ipaddr), Q2(ipaddr),
+           Q3(ipaddr), Q4(ipaddr));
+  return ipstr;
+}
+
 void print_ipv4(uint32_t ip, int mask) {
-  printf("%d.%d.%d.%d/%d\n", Q1(ip), Q2(ip), Q3(ip), Q4(ip), mask);
+  char ipstr[INET_ADDRSTRLEN];
+  printf("%s/%d\n", ipv4_string(ipstr, ip), mask);
   return;
 }
 
