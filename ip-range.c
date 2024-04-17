@@ -19,7 +19,7 @@ static void print_range(unsigned ipaddr, int prefix) {
   unsigned mask = ipmask(prefix);
   unsigned range_start = ipaddr & mask;
   unsigned range_end = range_start ^ (~mask);
-  if (range_start != ipaddr) printf("Incorrect range. ");
+  if (range_start != ipaddr) printf("Invalid range. ");
   print_ipv4(ipaddr, prefix);
   printf("%#x - %#x\n", range_start, range_end);
   printf("%s - %s\n", ipv4_string(ipstart, range_start),
@@ -30,7 +30,7 @@ static void parse_and_print_range(const char *ipstring) {
   uint32_t ipaddr;
   int prefix;
   int ret = str2ipv4(ipstring, &ipaddr, &prefix);
-  if (ret != 0) printf("Incorrect IPv4(CIDR): %s\n", ipstring);
+  if (ret != 0) printf("Invalid IPv4(CIDR): %s\n", ipstring);
 
   print_range(ipaddr, prefix);
 }
