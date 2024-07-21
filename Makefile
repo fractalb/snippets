@@ -5,6 +5,7 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -O2
 #CXXFLAGS += -fsanitize=undefined
 
 PROGS := hex2binary-test hex2binary-cmd hex-dump clib unittest-ip-parser benchmark iprange
+PROGS += longest-sequence
 
 all: $(PROGS)
 
@@ -19,6 +20,9 @@ hex2binary-test: hex2binary.c unittest_hex2binary.cc
 
 hex2binary-cmd: hex2binary-cmd.cc hex2binary.c
 	$(CXX) $(CXXFLAGS) $< -o $@
+
+longest-sequence: longest-sequence-run.c
+	$(CC) $(CFLAGS) $< -o $@
 
 ip-parser.o: ip-parser.c ip-parser.h
 	$(CC) $(CFLAGS) -c $< -o $@
