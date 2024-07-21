@@ -2,6 +2,11 @@
 #include <iostream>
 #include <stdexcept>
 
+/**
+ * Converts a hex file into a binary file.
+ * Oppositeof hex-dump which dumps a binary file
+ * as a hexa-decimal representation of the contents.
+ */
 extern "C" {
 #include "hex2binary.c"
 }
