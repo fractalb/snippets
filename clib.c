@@ -22,7 +22,7 @@ void u32_to_ip_quad(uint32_t ip, char str[IPV4_MAX_STR_SIZE])
 	assert(i < IPV4_MAX_STR_SIZE);
 }
 
-char *u32_ip_as_string(uint32_t ip)
+char *u32_ip_to_string(uint32_t ip)
 {
 	char *ipstr = malloc(IPV4_MAX_STR_SIZE);
 	if (!ipstr)
@@ -98,7 +98,7 @@ int test_ip()
 	char *ipstr;
 	int64_t ip_new;
 	for (int i = 0; i < n; i++) {
-		ipstr = u32_ip_as_string(ip[i]);
+		ipstr = u32_ip_to_string(ip[i]);
 		ip_new = ip_quad_to_u32(ipstr);
 		if (ip[i] != ip_new) {
 			printf("Failed for ip=%#x, str=%s, parsed_ip=%#lx\n",
