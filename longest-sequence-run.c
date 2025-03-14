@@ -2,36 +2,36 @@
 #include <stdlib.h>
 
 /**
- * Returns the start index of the longest run of non-decresing sequence.
+ * Returns the start index of the longest subarray of non-decreasing numbers.
  * `length` parameter is updated on function return to denote the length
- * of the sequence starting from the returned index.
+ * of the subarray starting from the returned index.
  *
  * On error, -1 is returned
  */
-int longest_non_decreasing_sequence_run(int arr[], int n_elem, int *length)
+int longest_non_decreasing_subarray(int arr[], int n_elem, int *length)
 {
 	if (n_elem <= 0)
 		return -1;
 
-	int index = 0;
+	int start_index = 0;
 	int len = 1;
 
-	int _len = 1;
-	for (int i = 1; i < n_elem; i++, _len++) {
+	int curr_len = 1;
+	for (int i = 1; i < n_elem; i++, curr_len++) {
 		if (arr[i] < arr[i - 1]) {
-			if (_len > len) {
-				len = _len;
-				index = i - _len;
+			if (curr_len > len) {
+				len = curr_len;
+				start_index = i - curr_len;
 			}
-			_len = 0;
+			curr_len = 0;
 		}
 	}
-	if (_len > len) {
-		len = _len;
-		index = n_elem - _len;
+	if (curr_len > len) {
+		len = curr_len;
+		start_index = n_elem - curr_len;
 	}
 	*length = len;
-	return index;
+	return start_index;
 }
 
 int main(int argc, char *argv[])
@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
 		arr[i - 1] = strtol(argv[i], NULL, 10);
 	}
 	int len, index;
-	index = longest_non_decreasing_sequence_run(arr, argc - 1, &len);
-	printf("Longest run index = %d, length = %d (%d - %d)\n", index, len,
+	index = longest_non_decreasing_subarray(arr, argc - 1, &len);
+	printf("Longest subarray index = %d, length = %d (%d - %d)\n", index, len,
 	       arr[index], arr[index + len - 1]);
 	return 0;
 }
